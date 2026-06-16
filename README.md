@@ -96,6 +96,10 @@ No IDE needed. Click the link below, connect your ESP32 via USB, and hit Install
 
 ➡ **[Install via browser](https://theprintingpilot.github.io/YouTube-Subscriber-Counter/)**
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/webinstaller.png" width="250" alt="Config Page">
+</div>
+
 Requires Chrome or Edge on desktop.
 
 **Option B — Arduino IDE**
@@ -114,6 +118,11 @@ Requires Chrome or Edge on desktop.
 4. Tap **Scan for networks**, pick your Wi-Fi, enter your password
 5. Enter your YouTube Channel ID and API key
 6. Hit **Save & connect** — the device reboots and starts fetching stats
+
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/webconfig.png" width="250" alt="Config Page">
+</div>
 
 ---
 
