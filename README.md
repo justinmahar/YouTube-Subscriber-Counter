@@ -8,7 +8,7 @@ An ESP32-based display that shows your YouTube subscriber and view counts on a M
 
 ---
 
-## ⚡ [Install via browser](https://theprintingpilot.github.io/YouTube-Subscriber-Counter/install.html) — no IDE needed
+## ⚡ [Install via browser](https://theprintingpilot.github.io/YouTube-Subscriber-Counter/) — no IDE needed
 
 ---
 
@@ -94,7 +94,7 @@ Regular Version:
 
 No IDE needed. Click the link below, connect your ESP32 via USB, and hit Install:
 
-➡ **[Install via browser](https://theprintingpilot.github.io/YouTube-Subscriber-Counter/install.html)**
+➡ **[Install via browser](https://theprintingpilot.github.io/YouTube-Subscriber-Counter/)**
 
 Requires Chrome or Edge on desktop.
 
