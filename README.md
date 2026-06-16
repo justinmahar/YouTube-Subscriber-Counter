@@ -58,6 +58,16 @@ An ESP32-based display that shows your YouTube subscriber and view counts on a M
 
 ---
 
+
+## Download the 3D Files
+
+
+[![Printables](https://img.shields.io/badge/Printables-FA6831?style=for-the-badge&logoColor=white)](https://www.printables.com/model/1756251-youtube-subscriber-v20)
+[![MakerWorld](https://img.shields.io/badge/MakerWorld-000000?style=for-the-badge&logoColor=white)](https://makerworld.com/en/models/2941691-youtube-subscriber-v2-0#profileId-3294669)
+
+
+---
+
 ### Wiring
 
 Battery Version:
