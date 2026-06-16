@@ -441,23 +441,36 @@
 })();
 </script>
 
-<!-- Load static manifest -->
+<!-- Load static manifest + fetch latest version label -->
 <script>
 (async function() {
+  var REPO = 'ThePrintingPilot/YouTube-Subscriber-Counter';
   var versionLabel = document.getElementById('version-label');
   var installBtn   = document.getElementById('install-btn');
   var loadingBtn   = document.getElementById('loading-btn');
   var errorMsg     = document.getElementById('error-msg');
 
   try {
+    // Manifest must exist for the install button to work
     var res = await fetch('./manifest.json');
     if (!res.ok) throw new Error('manifest not found');
-    var manifest = await res.json();
 
     installBtn.setAttribute('manifest', './manifest.json');
-    versionLabel.textContent = 'Latest: ' + manifest.version;
     loadingBtn.style.display = 'none';
     installBtn.style.display = 'block';
+
+    // Fetch the real latest version tag from GitHub (JSON, no CORS issue)
+    try {
+      var rel = await fetch('https://api.github.com/repos/' + REPO + '/releases/latest');
+      if (rel.ok) {
+        var data = await rel.json();
+        versionLabel.textContent = 'Latest: ' + data.tag_name;
+      } else {
+        versionLabel.textContent = 'Ready to flash';
+      }
+    } catch(e) {
+      versionLabel.textContent = 'Ready to flash';
+    }
 
   } catch(e) {
     versionLabel.textContent = 'No release found';

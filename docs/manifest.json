@@ -5,9 +5,18 @@
     {
       "chipFamily": "ESP32",
       "parts": [
-        { "path": "bootloader.bin", "offset": 4096 },
-        { "path": "partitions.bin", "offset": 32768 },
-        { "path": "firmware.bin",   "offset": 65536 }
+        {
+          "path": "https://github.com/ThePrintingPilot/YouTube-Subscriber-Counter/releases/latest/download/bootloader.bin",
+          "offset": 4096
+        },
+        {
+          "path": "https://github.com/ThePrintingPilot/YouTube-Subscriber-Counter/releases/latest/download/partitions.bin",
+          "offset": 32768
+        },
+        {
+          "path": "https://github.com/ThePrintingPilot/YouTube-Subscriber-Counter/releases/latest/download/firmware.bin",
+          "offset": 65536
+        }
       ]
     }
   ]
