@@ -8,6 +8,10 @@ An ESP32-based display that shows your YouTube subscriber and view counts on a M
 
 ---
 
+## ⚡ [Install via browser](https://theprintingpilot.github.io/YouTube-Subscriber-Counter/install.html) — no IDE needed
+
+---
+
 ## Features
 
 - Alternates between subscriber count and view count on a 4-module MAX7219 matrix
@@ -54,10 +58,9 @@ An ESP32-based display that shows your YouTube subscriber and view counts on a M
 
 ---
 
-### Wairing
+### Wiring
 
-
-Battery Verion:
+Battery Version:
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/Circuit%20Battery.png" width="650" alt="Wiring - Battery Version">
@@ -66,11 +69,8 @@ Battery Verion:
 Regular Version:
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/Circuit%20Regular.png" width="650" alt="Wiring - No Battery Version">
+  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/Circuit%20Regular.png" width="650" alt="Wiring - Regular Version">
 </div>
-
-
-
 
 ---
 
@@ -90,11 +90,21 @@ Regular Version:
 
 ### 3. Flash the firmware
 
+**Option A — Browser installer (recommended)**
+
+No IDE needed. Click the link below, connect your ESP32 via USB, and hit Install:
+
+➡ **[Install via browser](https://theprintingpilot.github.io/YouTube-Subscriber-Counter/install.html)**
+
+Requires Chrome or Edge on desktop.
+
+**Option B — Arduino IDE**
+
 1. Open `YouTube_Sub_Follower_Counter.ino` in Arduino IDE
 2. Select your ESP32 board and port
 3. Upload
 
-No `secrets.h` file needed — credentials are configured through the web portal.
+
 
 ### 4. Configure via the portal
 
@@ -119,13 +129,15 @@ Leave any field blank when saving and the device keeps the previously stored val
 
 ---
 
-## OTA Firmware Updates
+## OTA Firmware Updates (device already flashed)
 
 1. In Arduino IDE: **Sketch → Export Compiled Binary** — saves a `.bin` file next to your sketch
 2. Open the device IP in your browser
-3. Scroll to **Firmware update**, pick the `.bin` file, click **Upload firmware**
+3. Scroll to **Firmware update**, pick the main firmware `.bin`, click **Upload firmware**
 4. The matrix shows `OTA...` then `Rebooting` — done
 
+
+---
 
 ## Credits
 
