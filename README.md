@@ -2,8 +2,9 @@
 
 An ESP32-based display that shows your YouTube subscriber and view counts on a MAX7219 LED matrix. No IDE required after the first flash — configure everything through a built-in web portal and push firmware updates over Wi-Fi.
 
-![YouTube Stats Counter](https://via.placeholder.com/800x300/111111/22c55e?text=YouTube+Stats+Counter) 
-<!-- Replace with a real photo of your build -->
+<div align="center">
+  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/Thumbnail2.png" width="560" alt="YouTube Subscriber Counter V2.0">
+</div>
 
 ---
 
@@ -47,9 +48,26 @@ An ESP32-based display that shows your YouTube subscriber and view counts on a M
 
 > Links are affiliate links — they help support the project at no extra cost to you.
 
+<div align="center">
+  <img src="https://github.com/ThePrintingPilot/YouTube-Subscriber-Counter/blob/main/Images/ExplodedView.gif?raw=true" width="650" alt="YouTube Subscriber Counter V2.0 Exploded View">
+</div>
 
-Wiring:
+---
 
+### Wairing
+
+
+Battery Verion:
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/Circuit%20Battery.png" width="650" alt="Wiring - Battery Version">
+</div>
+
+Regular Version:
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/Circuit%20Regular.png" width="650" alt="Wiring - No Battery Version">
+</div>
 
 
 
