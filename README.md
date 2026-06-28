@@ -3,12 +3,12 @@
 An ESP32-based display that shows your YouTube subscriber and view counts on a MAX7219 LED matrix. No IDE required after the first flash — configure everything through a built-in web portal and push firmware updates over Wi-Fi.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/Thumbnail2.png" width="560" alt="YouTube Subscriber Counter V2.0">
+  <img src="https://raw.githubusercontent.com/justinmahar/YouTube-Subscriber-Counter/refs/heads/main/Images/Thumbnail2.png" width="560" alt="YouTube Subscriber Counter V2.0">
 </div>
 
 ---
 
-## ⚡ [Install via browser](https://theprintingpilot.github.io/YouTube-Subscriber-Counter/) — no IDE needed
+## ⚡ [Install via browser](https://justinmahar.github.io/YouTube-Subscriber-Counter/) — no IDE needed
 
 ---
 
@@ -50,10 +50,10 @@ An ESP32-based display that shows your YouTube subscriber and view counts on a M
 | BMS | [AliExpress](https://s.click.aliexpress.com/e/_c4sosls1) |
 | On/Off Switch | [AliExpress](https://s.click.aliexpress.com/e/_oDqU0l8) |
 
-> Links are affiliate links — they help support the project at no extra cost to you.
+> Hardware affiliate links are from the original project by [The Printing Pilot](https://github.com/ThePrintingPilot/YouTube-Subscriber-Counter) — they help support that project at no extra cost to you.
 
 <div align="center">
-  <img src="https://github.com/ThePrintingPilot/YouTube-Subscriber-Counter/blob/main/Images/ExplodedView.gif?raw=true" width="650" alt="YouTube Subscriber Counter V2.0 Exploded View">
+  <img src="https://github.com/justinmahar/YouTube-Subscriber-Counter/blob/main/Images/ExplodedView.gif?raw=true" width="650" alt="YouTube Subscriber Counter V2.0 Exploded View">
 </div>
 
 ---
@@ -73,13 +73,13 @@ An ESP32-based display that shows your YouTube subscriber and view counts on a M
 Battery Version:
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/Circuit%20Battery.png" width="650" alt="Wiring - Battery Version">
+  <img src="https://raw.githubusercontent.com/justinmahar/YouTube-Subscriber-Counter/refs/heads/main/Images/Circuit%20Battery.png" width="650" alt="Wiring - Battery Version">
 </div>
 
 Regular Version:
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/Circuit%20Regular.png" width="650" alt="Wiring - Regular Version">
+  <img src="https://raw.githubusercontent.com/justinmahar/YouTube-Subscriber-Counter/refs/heads/main/Images/Circuit%20Regular.png" width="650" alt="Wiring - Regular Version">
 </div>
 
 ---
@@ -104,10 +104,10 @@ Regular Version:
 
 No IDE needed. Click the link below, connect your ESP32 via USB, and hit Install:
 
-➡ **[Install via browser](https://theprintingpilot.github.io/YouTube-Subscriber-Counter/)**
+➡ **[Install via browser](https://justinmahar.github.io/YouTube-Subscriber-Counter/)**
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/webinstaller.png" width="250" alt="Config Page">
+  <img src="https://raw.githubusercontent.com/justinmahar/YouTube-Subscriber-Counter/refs/heads/main/Images/webinstaller.png" width="250" alt="Config Page">
 </div>
 
 Requires Chrome or Edge on desktop.
@@ -130,7 +130,7 @@ Requires Chrome or Edge on desktop.
 
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/ThePrintingPilot/YouTube-Subscriber-Counter/refs/heads/main/Images/webconfig.png" width="250" alt="Config Page">
+  <img src="https://raw.githubusercontent.com/justinmahar/YouTube-Subscriber-Counter/refs/heads/main/Images/webconfig.png" width="250" alt="Config Page">
 </div>
 
 ---
@@ -157,9 +157,62 @@ Leave any field blank when saving and the device keeps the previously stored val
 
 ---
 
+## Development
+
+All firmware source lives in `Firmware-PIO/`. Open that folder as your Cursor/VS Code workspace when building, flashing, or simulating.
+
+### Build and flash (PlatformIO)
+
+```bash
+cd Firmware-PIO
+pio run              # compile
+pio run -t upload    # flash via USB
+pio device monitor   # serial log at 9600 baud
+```
+
+### Wokwi simulator
+
+Simulate the ESP32 + 4-module MAX7219 matrix without hardware.
+
+**Requirements:** [PlatformIO](https://platformio.org/) and the [Wokwi for VS Code](https://marketplace.visualstudio.com/items?itemName=wokwi.wokwi-vscode) extension.
+
+1. Open **`Firmware-PIO`** as your workspace root (where `wokwi.toml` lives).
+2. Build: `pio run`
+3. Start: `Cmd+Shift+P` → **Wokwi: Start Simulator**
+4. Keep the **simulator tab visible** — Wokwi pauses when you switch away.
+5. Open the serial panel in the sim and set baud to **9600**, then reset the ESP32.
+
+Circuit wiring is defined in `diagram.json` (DIN→GPIO23, CLK→GPIO18, CS→GPIO5, power via `V+` / `GND.2`). On first boot with no saved credentials, the matrix shows `WiFi:YT` and the device starts the config portal.
+
+To test Wi-Fi in the sim, connect to the virtual network **`Wokwi-GUEST`** (open, channel 6) from the config portal, or enter it manually when saving settings.
+
+### Web installer binaries
+
+The [browser installer](https://justinmahar.github.io/YouTube-Subscriber-Counter/) uses pre-built flash images in `docs/`, referenced by `docs/manifest.json`:
+
+| File | Source (after `pio run`) |
+|---|---|
+| `docs/bootloader.bin` | `Firmware-PIO/.pio/build/esp32dev/bootloader.bin` |
+| `docs/partitions.bin` | `Firmware-PIO/.pio/build/esp32dev/partitions.bin` |
+| `docs/firmware.bin` | `Firmware-PIO/.pio/build/esp32dev/firmware.bin` |
+
+To refresh the web installer after firmware changes:
+
+```bash
+cd Firmware-PIO && pio run
+../scripts/update-web-installer.sh
+```
+
+Then bump the `"version"` field in `docs/manifest.json` if you are publishing a release, commit the updated `docs/*.bin` files, and push so GitHub Pages serves the new build.
+
+**Note:** OTA updates on a flashed device use `firmware.bin` only (the app partition). The browser installer flashes the full image (bootloader + partition table + app).
+
+---
+
 ## Credits
 
-Number formatting code by [The Swedish Maker](https://www.youtube.com/@TheSwedishMaker).
+- Original project, 3D enclosure, and browser installer design by [**The Printing Pilot**](https://github.com/ThePrintingPilot/YouTube-Subscriber-Counter)
+- Number formatting code by [The Swedish Maker](https://www.youtube.com/@TheSwedishMaker)
 
 ---
 
