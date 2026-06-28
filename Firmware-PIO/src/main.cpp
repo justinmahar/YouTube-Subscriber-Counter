@@ -36,6 +36,7 @@ Preferences prefs;
 
 const unsigned long DISPLAY_UPDATE_MS = 1000;
 const unsigned long STAT_CYCLE_MS = 5000;
+const uint8_t STAT_RIGHT_PADDING_COLUMNS = 1;
 const unsigned int DEFAULT_REFRESH_MINUTES = 5;
 const unsigned int MAX_REFRESH_MINUTES = 1440;
 
@@ -71,6 +72,7 @@ String num_format(long num);
 String html_escape(String value);
 bool fetchStats();
 void showProjectedStat();
+void renderRightAlignedStat(const char *text);
 
 // ─── Config portal HTML ───────────────────────────────────────────────────────
 const char CONFIG_HTML[] PROGMEM = R"rawhtml(
@@ -534,6 +536,27 @@ bool fetchStats() {
 
 static char statDisplayBuffer[20];
 static String lastDisplayedValue = "";
+static bool statDisplayScrolling = false;
+
+void renderRightAlignedStat(const char *text) {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+  uint8_t charSpacing = Display.getCharSpacing();
+  uint16_t col = STAT_RIGHT_PADDING_COLUMNS;
+  uint8_t glyph[8];
+
+  matrix->update(MD_MAX72XX::OFF);
+  matrix->clear();
+
+  for (int i = (int)strlen(text) - 1; i >= 0; i--) {
+    uint8_t glyphWidth = matrix->getChar(text[i], sizeof(glyph), glyph);
+    if (glyphWidth == 0) continue;
+
+    matrix->setChar(col + glyphWidth - 1, text[i]);
+    col += glyphWidth + charSpacing;
+  }
+
+  matrix->update(MD_MAX72XX::ON);
+}
 
 void showProjectedStat() {
   if (!statsLoaded) return;
@@ -552,16 +575,16 @@ void showProjectedStat() {
   formatted.toCharArray(statDisplayBuffer, sizeof(statDisplayBuffer));
   Serial.println(formatted);
 
-  Display.setTextAlignment(PA_RIGHT);
-
   uint16_t startCol, endCol;
   Display.getDisplayExtent(startCol, endCol);
   uint16_t displayWidth = endCol - startCol + 1;
   uint16_t textWidth = Display.getTextColumns(statDisplayBuffer);
 
-  if (textWidth <= displayWidth) {
-    Display.print(formatted);
+  if (textWidth + STAT_RIGHT_PADDING_COLUMNS <= displayWidth) {
+    statDisplayScrolling = false;
+    renderRightAlignedStat(statDisplayBuffer);
   } else {
+    statDisplayScrolling = true;
     Display.displayScroll(statDisplayBuffer, PA_RIGHT, PA_SCROLL_LEFT, 80);
   }
 }
@@ -705,9 +728,11 @@ void loop() {
       api_lasttime = now;
     }
 
-    if (statsLoaded) {
+    if (statsLoaded && statDisplayScrolling) {
       Display.displayAnimate();
+    }
 
+    if (statsLoaded) {
       if (selectedStatsCount() > 1 && now - cycle_lasttime >= STAT_CYCLE_MS) {
         current_stat_index = nextSelectedStatIndex(current_stat_index);
         lastDisplayedValue = "";

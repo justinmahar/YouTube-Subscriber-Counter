@@ -29,27 +29,27 @@ An ESP32-based display that shows projected channel stats from a configurable JS
 
 ### Electronics
 
-| Component | Link |
-|---|---|
-| ESP32 Dev Board | [AliExpress](https://s.click.aliexpress.com/e/_opLIWvk) |
+| Component                      | Link                                                    |
+| ------------------------------ | ------------------------------------------------------- |
+| ESP32 Dev Board                | [AliExpress](https://s.click.aliexpress.com/e/_opLIWvk) |
 | MAX7219 Dot Matrix (4 modules) | [AliExpress](https://s.click.aliexpress.com/e/_oo3TdS6) |
 
 ### Hardware
 
-| Component | Link |
-|---|---|
+| Component         | Link                                                     |
+| ----------------- | -------------------------------------------------------- |
 | M3 Thread Inserts | [AliExpress](https://s.click.aliexpress.com/e/_c2Iun0o1) |
-| M3x8 Screws | [AliExpress](https://s.click.aliexpress.com/e/_oogbRPM) |
-| Acrylic Sheet | [AliExpress](https://s.click.aliexpress.com/e/_oorPPai) |
-| 6x3mm Magnets | [AliExpress](https://s.click.aliexpress.com/e/_c3qP6N2t) |
+| M3x8 Screws       | [AliExpress](https://s.click.aliexpress.com/e/_oogbRPM)  |
+| Acrylic Sheet     | [AliExpress](https://s.click.aliexpress.com/e/_oorPPai)  |
+| 6x3mm Magnets     | [AliExpress](https://s.click.aliexpress.com/e/_c3qP6N2t) |
 
 ### Battery / Wireless Version (optional)
 
-| Component | Link |
-|---|---|
-| Battery | [AliExpress](https://s.click.aliexpress.com/e/_opFpjhg) |
-| BMS | [AliExpress](https://s.click.aliexpress.com/e/_c4sosls1) |
-| On/Off Switch | [AliExpress](https://s.click.aliexpress.com/e/_oDqU0l8) |
+| Component     | Link                                                     |
+| ------------- | -------------------------------------------------------- |
+| Battery       | [AliExpress](https://s.click.aliexpress.com/e/_opFpjhg)  |
+| BMS           | [AliExpress](https://s.click.aliexpress.com/e/_c4sosls1) |
+| On/Off Switch | [AliExpress](https://s.click.aliexpress.com/e/_oDqU0l8)  |
 
 > Hardware affiliate links are from the original project by [The Printing Pilot](https://github.com/ThePrintingPilot/YouTube-Subscriber-Counter) — they help support that project at no extra cost to you.
 
@@ -207,11 +207,11 @@ For private local endpoint values, keep them in an untracked `.env.local` or not
 
 The [browser installer](https://justinmahar.github.io/YouTube-Subscriber-Counter/) uses pre-built flash images in `docs/`, referenced by `docs/manifest.json`:
 
-| File | Source (after `pio run`) |
-|---|---|
+| File                  | Source (after `pio run`)                          |
+| --------------------- | ------------------------------------------------- |
 | `docs/bootloader.bin` | `Firmware-PIO/.pio/build/esp32dev/bootloader.bin` |
 | `docs/partitions.bin` | `Firmware-PIO/.pio/build/esp32dev/partitions.bin` |
-| `docs/firmware.bin` | `Firmware-PIO/.pio/build/esp32dev/firmware.bin` |
+| `docs/firmware.bin`   | `Firmware-PIO/.pio/build/esp32dev/firmware.bin`   |
 
 To refresh the web installer after firmware changes:
 
