@@ -39,6 +39,8 @@ const unsigned long STAT_CYCLE_MS = 5000;
 const uint8_t STAT_RIGHT_PADDING_COLUMNS = 1;
 const unsigned int DEFAULT_REFRESH_MINUTES = 5;
 const unsigned int MAX_REFRESH_MINUTES = 1440;
+const double SECONDS_PER_28_DAYS = 28.0 * 24.0 * 60.0 * 60.0;
+const int INTERVAL_PATTERN_LENGTH = 48;
 
 const uint8_t STAT_SUBSCRIBERS = 1 << 0;
 const uint8_t STAT_VIEWS = 1 << 1;
@@ -56,8 +58,10 @@ unsigned long api_lasttime = 0;
 unsigned long display_lasttime = 0;
 unsigned long cycle_lasttime = 0;
 unsigned long stats_fetched_at = 0;
-double stat_values[STAT_COUNT] = { 0, 0, 0 };
-double stat_rates[STAT_COUNT] = { 0, 0, 0 };
+double stat_baseline_values[STAT_COUNT] = { 0, 0, 0 };
+double stat_increase_per_28_days[STAT_COUNT] = { 0, 0, 0 };
+double stat_baseline_started_at_unix = 0;
+double stats_as_of_unix = 0;
 int current_stat_index = STAT_INDEX_SUBSCRIBERS;
 bool statsLoaded = false;
 StaticJsonDocument<1536> doc;
@@ -68,11 +72,14 @@ unsigned int saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
 bool configMode = false;
 bool captivePortalActive = false;
 
-String num_format(long num);
+String stat_format(double value, int statIndex);
 String html_escape(String value);
 bool fetchStats();
 void showProjectedStat();
 void renderRightAlignedStat(const char *text);
+double getProjectedStatValue(int statIndex, double currentUnixTimestamp);
+double getProjectedWholeStatValue(double baselineStartedAtUnix, double startingValue, double increasePer28Days, double currentUnixTimestamp);
+double getProjectedFractionalStatValue(double baselineStartedAtUnix, double startingValue, double increasePer28Days, double currentUnixTimestamp);
 
 // ─── Config portal HTML ───────────────────────────────────────────────────────
 const char CONFIG_HTML[] PROGMEM = R"rawhtml(
@@ -475,6 +482,116 @@ void ensureCurrentStatSelected() {
   }
 }
 
+double interval_weights[INTERVAL_PATTERN_LENGTH];
+bool interval_weights_initialized = false;
+
+double getDeterministicNoise(uint32_t incrementNumber) {
+  uint32_t hash = (incrementNumber ^ 0x9e3779b9UL) * 0x85ebca6bUL;
+  hash ^= hash >> 13;
+  hash *= 0xc2b2ae35UL;
+  hash ^= hash >> 16;
+
+  return (double)hash / 4294967296.0;
+}
+
+double getIntervalWeight(int patternIndex) {
+  double noise = getDeterministicNoise((uint32_t)patternIndex + 1);
+
+  if (noise < 0.22) {
+    return 0.08 + (noise / 0.22) * 0.17;
+  }
+
+  if (noise < 0.42) {
+    return 0.34 + ((noise - 0.22) / 0.2) * 0.36;
+  }
+
+  if (noise < 0.82) {
+    return 0.9 + ((noise - 0.42) / 0.4) * 0.45;
+  }
+
+  return 1.8 + ((noise - 0.82) / 0.18) * 1.6;
+}
+
+void ensureIntervalWeightsInitialized() {
+  if (interval_weights_initialized) return;
+
+  double rawWeights[INTERVAL_PATTERN_LENGTH];
+  double rawWeightTotal = 0;
+
+  for (int i = 0; i < INTERVAL_PATTERN_LENGTH; i++) {
+    rawWeights[i] = getIntervalWeight(i);
+    rawWeightTotal += rawWeights[i];
+  }
+
+  for (int i = 0; i < INTERVAL_PATTERN_LENGTH; i++) {
+    interval_weights[i] = (rawWeights[i] * INTERVAL_PATTERN_LENGTH) / rawWeightTotal;
+  }
+
+  interval_weights_initialized = true;
+}
+
+uint64_t getJitteredIncrementCount(double elapsedSeconds, double secondsPerIncrement) {
+  ensureIntervalWeightsInitialized();
+
+  double cycleSeconds = secondsPerIncrement * INTERVAL_PATTERN_LENGTH;
+  uint64_t completedCycles = (uint64_t)floor(elapsedSeconds / cycleSeconds);
+  uint64_t incrementCount = completedCycles * INTERVAL_PATTERN_LENGTH;
+  double remainingSeconds = elapsedSeconds - (completedCycles * cycleSeconds);
+
+  for (int i = 0; i < INTERVAL_PATTERN_LENGTH; i++) {
+    double intervalSeconds = interval_weights[i] * secondsPerIncrement;
+
+    if (remainingSeconds < intervalSeconds) {
+      break;
+    }
+
+    remainingSeconds -= intervalSeconds;
+    incrementCount += 1;
+  }
+
+  return incrementCount;
+}
+
+double getProjectedWholeStatValue(double baselineStartedAtUnix, double startingValue, double increasePer28Days, double currentUnixTimestamp) {
+  double elapsedSeconds = max(0.0, currentUnixTimestamp - baselineStartedAtUnix);
+  double secondsPerIncrement = SECONDS_PER_28_DAYS / increasePer28Days;
+
+  if (!isfinite(secondsPerIncrement) || secondsPerIncrement <= 0) {
+    return startingValue;
+  }
+
+  return startingValue + getJitteredIncrementCount(elapsedSeconds, secondsPerIncrement);
+}
+
+double getProjectedFractionalStatValue(double baselineStartedAtUnix, double startingValue, double increasePer28Days, double currentUnixTimestamp) {
+  double elapsedSeconds = max(0.0, currentUnixTimestamp - baselineStartedAtUnix);
+  double increasePerSecond = increasePer28Days / SECONDS_PER_28_DAYS;
+
+  if (!isfinite(increasePerSecond) || increasePerSecond <= 0) {
+    return startingValue;
+  }
+
+  return startingValue + elapsedSeconds * increasePerSecond;
+}
+
+double getProjectedStatValue(int statIndex, double currentUnixTimestamp) {
+  if (statIndex == STAT_INDEX_WATCH_HOURS) {
+    return getProjectedFractionalStatValue(
+      stat_baseline_started_at_unix,
+      stat_baseline_values[statIndex],
+      stat_increase_per_28_days[statIndex],
+      currentUnixTimestamp
+    );
+  }
+
+  return getProjectedWholeStatValue(
+    stat_baseline_started_at_unix,
+    stat_baseline_values[statIndex],
+    stat_increase_per_28_days[statIndex],
+    currentUnixTimestamp
+  );
+}
+
 bool fetchStats() {
   HTTPClient http;
   bool beginOk = false;
@@ -512,19 +629,28 @@ bool fetchStats() {
     return false;
   }
 
+  JsonObject baseline = doc["baseline"].as<JsonObject>();
+  JsonObject metrics28Days = doc["metrics28Days"].as<JsonObject>();
   JsonObject adjusted = doc["adjusted"].as<JsonObject>();
-  JsonObject rates = doc["growthRatesPerMinute"].as<JsonObject>();
-  if (adjusted.isNull() || rates.isNull()) {
-    Serial.println("Stats response missing adjusted or growthRatesPerMinute.");
+  if (baseline.isNull() || metrics28Days.isNull() || adjusted.isNull()) {
+    Serial.println("Stats response missing baseline, metrics28Days, or adjusted.");
     return false;
   }
 
-  stat_values[STAT_INDEX_SUBSCRIBERS] = adjusted["subscribers"] | 0.0;
-  stat_values[STAT_INDEX_VIEWS] = adjusted["totalViews"] | 0.0;
-  stat_values[STAT_INDEX_WATCH_HOURS] = adjusted["watchHours"] | 0.0;
-  stat_rates[STAT_INDEX_SUBSCRIBERS] = rates["subscribers"] | 0.0;
-  stat_rates[STAT_INDEX_VIEWS] = rates["views"] | 0.0;
-  stat_rates[STAT_INDEX_WATCH_HOURS] = rates["watchHours"] | 0.0;
+  stat_baseline_started_at_unix = baseline["startedAtUnix"] | 0.0;
+  stats_as_of_unix = adjusted["asOfUnix"] | 0.0;
+
+  if (stat_baseline_started_at_unix <= 0 || stats_as_of_unix <= 0) {
+    Serial.println("Stats response missing valid Unix timestamps.");
+    return false;
+  }
+
+  stat_baseline_values[STAT_INDEX_SUBSCRIBERS] = baseline["subscribers"] | 0.0;
+  stat_baseline_values[STAT_INDEX_VIEWS] = baseline["totalViews"] | 0.0;
+  stat_baseline_values[STAT_INDEX_WATCH_HOURS] = baseline["watchHours"] | 0.0;
+  stat_increase_per_28_days[STAT_INDEX_SUBSCRIBERS] = metrics28Days["subscribers"] | 0.0;
+  stat_increase_per_28_days[STAT_INDEX_VIEWS] = metrics28Days["views"] | 0.0;
+  stat_increase_per_28_days[STAT_INDEX_WATCH_HOURS] = metrics28Days["watchHours"] | 0.0;
 
   stats_fetched_at = millis();
   statsLoaded = true;
@@ -562,13 +688,10 @@ void showProjectedStat() {
   if (!statsLoaded) return;
 
   ensureCurrentStatSelected();
-  double elapsedMinutes = (millis() - stats_fetched_at) / 60000.0;
-  double projected = stat_values[current_stat_index] +
-                     (stat_rates[current_stat_index] * elapsedMinutes);
-  if (projected < 0) projected = 0;
+  double currentUnixTimestamp = stats_as_of_unix + ((millis() - stats_fetched_at) / 1000.0);
+  double projected = getProjectedStatValue(current_stat_index, currentUnixTimestamp);
 
-  long displayValue = (long)(projected + 0.5);
-  String formatted = num_format(displayValue);
+  String formatted = stat_format(projected, current_stat_index);
   if (formatted == lastDisplayedValue) return;
   lastDisplayedValue = formatted;
 
@@ -747,6 +870,11 @@ void loop() {
   }
 }
 
-String num_format(long num) {
-  return String(num);
+String stat_format(double value, int statIndex) {
+  if (statIndex == STAT_INDEX_WATCH_HOURS) {
+    char buf[20];
+    snprintf(buf, sizeof(buf), "%.1f", value);
+    return String(buf);
+  }
+  return String((long)(value + 0.5));
 }
