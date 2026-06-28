@@ -1549,13 +1549,11 @@ void runBootAnimation() {
   matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
 
   bootAnimRain(matrix, colStart, colEnd, width, height);
-  bootShowCenteredText("YouTube", 1100);
-
   bootAnimPlasma(matrix, colStart, width, height);
-  bootShowCenteredText("Stats", 1100);
-
   bootAnimSpectrum(matrix, colStart, width, height);
-  bootShowCenteredText("Counter!", 1100);
+  bootShowCenteredText("YouTube", 600);
+  bootShowCenteredText("Stats", 600);
+  bootShowCenteredText("Counter!", 1300);
 
   bootAnimFinale(matrix, colStart, colEnd, width, height);
 
