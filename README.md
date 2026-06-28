@@ -22,6 +22,55 @@ An ESP32-based display that shows projected channel stats from a configurable JS
 - **IP display on boot** — scrolls your local IP across the matrix for 5 seconds so you always know where to reach the config page
 - **In-browser reconfigure** — visit the device IP any time to change Wi-Fi or stats endpoint settings; leave the Wi-Fi fields blank to keep saved values
 - **OTA firmware updates** — upload a compiled `.bin` straight from the config page, no USB cable needed after first flash
+- **Milestone animations** — celebratory LED animations when projected stats cross round-number thresholds (see [Milestones](#milestones))
+
+---
+
+## Milestones
+
+When a stat crosses a milestone threshold, the matrix plays a dedicated animation before returning to the normal display. Each metric has its own set of animations so subscribers, views, and watch hours feel distinct at every tier.
+
+**18 animations total** — 3 metrics × 6 tiers.
+
+### Tier thresholds
+
+The same tier boundaries apply to subscribers, views, and watch hours:
+
+| Tier | Interval | Example values |
+| ---- | -------- | -------------- |
+| 1    | 100      | 100, 200, 300, … |
+| 2    | 1,000    | 1K, 2K, 3K, … |
+| 3    | 10,000   | 10K, 20K, 30K, … |
+| 4    | 100,000  | 100K, 200K, 300K, … |
+| 5    | 1,000,000 | 1M, 2M, 3M, … |
+| 6    | 10,000,000 | 10M, 20M, 30M, … |
+
+Tier 1 fires on every 100; higher tiers fire on their own boundaries (e.g. 1,000, 10,000, …). When multiple tiers align (e.g. 1,000 subs), the highest matching tier animation plays.
+
+### Animation inventory
+
+| # | Metric       | Tier | Threshold | Status |
+| - | ------------ | ---- | --------- | ------ |
+| 1 | Subscribers  | 1    | 100       | Done (border chase) |
+| 2 | Subscribers  | 2    | 1K        | Done (ripple + rain) |
+| 3 | Subscribers  | 3    | 10K       | Done (epic multi-phase) |
+| 4 | Subscribers  | 4    | 100K      | Done (fireworks + explosions) |
+| 5 | Subscribers  | 5    | 1M        | Done (twin megablast + crossfire) |
+| 6 | Subscribers  | 6    | 10M       | Done (ultimate finale) |
+| 7 | Views        | 1    | 100       | Planned |
+| 8 | Views        | 2    | 1K        | Planned |
+| 9 | Views        | 3    | 10K       | Planned |
+| 10 | Views       | 4    | 100K      | Planned |
+| 11 | Views       | 5    | 1M        | Planned |
+| 12 | Views       | 6    | 10M       | Planned |
+| 13 | Watch hours | 1    | 100       | Planned |
+| 14 | Watch hours | 2    | 1K        | Planned |
+| 15 | Watch hours | 3    | 10K       | Planned |
+| 16 | Watch hours | 4    | 100K      | Planned |
+| 17 | Watch hours | 5    | 1M        | Planned |
+| 18 | Watch hours | 6    | 10M       | Planned |
+
+Implementation will live in `Firmware-PIO/` and trigger off projected stat values between API refreshes.
 
 ---
 

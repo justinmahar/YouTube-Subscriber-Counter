@@ -15,6 +15,7 @@
 
 // File imports
 #include "FontSubs.h"
+#include "milestone_animations.h"
 
 // Hardware config
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
@@ -29,6 +30,10 @@
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
 const bool ENABLE_WOKWI_SETUP = true;
+
+// Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true and pick any animation below.
+const bool RUN_MILESTONE_TEST_ON_BOOT = true;
+const MilestoneAnimation MILESTONE_BOOT_TEST = MilestoneAnimation::Subs100K;
 
 MD_Parola Display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 WiFiClientSecure client;
@@ -1204,7 +1209,11 @@ void setup() {
   Display.setTextAlignment(PA_CENTER);
 
   randomSeed(esp_random());
-  runBootAnimation();
+  if (RUN_MILESTONE_TEST_ON_BOOT) {
+    runMilestoneAnimation(Display, MILESTONE_BOOT_TEST);
+  } else {
+    runBootAnimation();
+  }
 
   loadPrefs();
 
