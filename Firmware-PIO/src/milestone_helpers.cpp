@@ -390,3 +390,64 @@ void milestoneAnimFinalFlashes(MilestoneCtx &ctx, int flashCount,
     milestoneFrameShow(ctx, gapMs, 5);
   }
 }
+
+void milestoneAnimMultiSiteBlast(MilestoneCtx &ctx, const int *originX,
+                                 const int *originY, int siteCount, int maxRing,
+                                 uint16_t fastDelayMs, uint16_t slowDelayMs,
+                                 bool flashAfter) {
+  for (int ring = 0; ring <= maxRing; ring++) {
+    milestoneClear(ctx);
+    for (int s = 0; s < siteCount; s++) {
+      milestoneDrawExplosionRing(ctx, originX[s], originY[s], ring);
+      if (ring > 2) {
+        milestoneDrawExplosionRing(ctx, originX[s], originY[s], ring - 2);
+      }
+    }
+    milestoneFrameShow(ctx, ring < maxRing / 2 ? fastDelayMs : slowDelayMs,
+                       min(15, 6 + ring));
+  }
+
+  if (flashAfter) {
+    milestoneClear(ctx);
+    milestoneFillAll(ctx);
+    milestoneFrameShow(ctx, 110, 15);
+    milestoneClear(ctx);
+    milestoneFrameShow(ctx, 55, 5);
+  }
+}
+
+void milestoneAnimDualEdgeClimb(MilestoneCtx &ctx, uint16_t frameDelayMs) {
+  for (int frame = 0; frame < ctx.width / 2 + ctx.height + 2; frame++) {
+    milestoneClear(ctx);
+    for (int c = 0; c < ctx.width; c++) {
+      int distFromEdge = min(c, ctx.width - 1 - c);
+      int barH = 0;
+      if (frame >= distFromEdge) {
+        barH = min(ctx.height, frame - distFromEdge + 1);
+      }
+      for (int row = ctx.height - barH; row < ctx.height; row++) {
+        ctx.matrix->setPoint(row, ctx.colStart + c, true);
+      }
+    }
+    milestoneFrameShow(ctx, frameDelayMs, min(15, 5 + frame / 4));
+  }
+}
+
+void milestoneAnimScreenShake(MilestoneCtx &ctx, int frames,
+                              uint16_t frameDelayMs) {
+  for (int frame = 0; frame < frames; frame++) {
+    int offset = (frame % 3) - 1;
+    milestoneClear(ctx);
+    for (int c = 0; c < ctx.width; c++) {
+      for (int row = 0; row < ctx.height; row++) {
+        if ((c + row + frame) % 2 == 0) {
+          int col = c + offset;
+          if (col >= 0 && col < ctx.width) {
+            ctx.matrix->setPoint(row, ctx.colStart + col, true);
+          }
+        }
+      }
+    }
+    milestoneFrameShow(ctx, frameDelayMs, 14);
+  }
+}

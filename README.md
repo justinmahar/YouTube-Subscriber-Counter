@@ -30,11 +30,11 @@ An ESP32-based display that shows projected channel stats from a configurable JS
 
 When a stat crosses a milestone threshold, the matrix plays a dedicated animation before returning to the normal display. Each metric has its own set of animations so subscribers, views, and watch hours feel distinct at every tier.
 
-**18 animations total** — 3 metrics × 6 tiers.
+**19 animations total** — 3 metrics × 6 tiers, plus a views-only +100M apex tier.
 
 ### Tier thresholds
 
-The same tier boundaries apply to subscribers, views, and watch hours:
+Subscribers and watch hours use these boundaries:
 
 | Tier | Interval | Example values |
 | ---- | -------- | -------------- |
@@ -44,6 +44,8 @@ The same tier boundaries apply to subscribers, views, and watch hours:
 | 4    | 100,000  | 100K, 200K, 300K, … |
 | 5    | 1,000,000 | 1M, 2M, 3M, … |
 | 6    | 10,000,000 | 10M, 20M, 30M, … |
+
+**Views** use the same boundaries for tiers 1–6 but animations start at tier 3 (+10K). Crossings at +100 and +1K views do not play a milestone animation. Views also have an apex tier at **+100M** (100M, 200M, …) — subscribers and watch hours do not.
 
 Tier 1 fires on every 100; higher tiers fire on their own boundaries (e.g. 1,000, 10,000, …). When multiple tiers align (e.g. 1,000 subs), the highest matching tier animation plays.
 
@@ -55,20 +57,21 @@ Tier 1 fires on every 100; higher tiers fire on their own boundaries (e.g. 1,000
 | 2 | Subscribers  | 2    | 1K        | Done (ripple + rain) |
 | 3 | Subscribers  | 3    | 10K       | Done (epic multi-phase) |
 | 4 | Subscribers  | 4    | 100K      | Done (fireworks + explosions) |
-| 5 | Subscribers  | 5    | 1M        | Done (twin megablast + crossfire) |
+| 5 | Subscribers  | 5    | 1M        | Done (trinity blast + firestorm) |
 | 6 | Subscribers  | 6    | 10M       | Done (ultimate finale) |
-| 7 | Views        | 1    | 100       | Planned |
-| 8 | Views        | 2    | 1K        | Planned |
-| 9 | Views        | 3    | 10K       | Planned |
-| 10 | Views       | 4    | 100K      | Planned |
-| 11 | Views       | 5    | 1M        | Planned |
-| 12 | Views       | 6    | 10M       | Planned |
-| 13 | Watch hours | 1    | 100       | Planned |
-| 14 | Watch hours | 2    | 1K        | Planned |
-| 15 | Watch hours | 3    | 10K       | Planned |
-| 16 | Watch hours | 4    | 100K      | Planned |
-| 17 | Watch hours | 5    | 1M        | Planned |
-| 18 | Watch hours | 6    | 10M       | Planned |
+| 7 | Views        | 1    | 100       | — (no animation) |
+| 8 | Views        | 2    | 1K        | — (no animation) |
+| 9 | Views        | 3    | 10K       | Done (two eyes open + blink) |
+| 10 | Views       | 4    | 100K      | Done (dilated eyes + view rain) |
+| 11 | Views       | 5    | 1M        | Done (crowd eyes → giant stare + deluge) |
+| 12 | Views       | 6    | 10M       | Done (gravity well + nova grid + plasma) |
+| 13 | Views       | 7    | 100M      | Done (twin singularity + omniscience + hypernova) |
+| 14 | Watch hours | 1    | 100       | Done (hourglass + falling sand) |
+| 15 | Watch hours | 2    | 1K        | Planned |
+| 16 | Watch hours | 3    | 10K       | Planned |
+| 17 | Watch hours | 4    | 100K      | Planned |
+| 18 | Watch hours | 5    | 1M        | Planned |
+| 19 | Watch hours | 6    | 10M       | Planned |
 
 Implementation will live in `Firmware-PIO/` and trigger off projected stat values between API refreshes.
 

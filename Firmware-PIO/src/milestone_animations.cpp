@@ -53,10 +53,16 @@ void milestoneGetIncreaseLabel(MilestoneTier tier, char *buffer, size_t size) {
   case MilestoneTier::Tier10M:
     snprintf(buffer, size, "+10M!");
     break;
+  case MilestoneTier::Tier100M:
+    snprintf(buffer, size, "+100M!");
+    break;
   }
 }
 
 static MilestoneTier tierFromAnimation(MilestoneAnimation animation) {
+  if (animation == MilestoneAnimation::Views100M) {
+    return MilestoneTier::Tier100M;
+  }
   return static_cast<MilestoneTier>(static_cast<uint8_t>(animation) % 6);
 }
 
@@ -79,6 +85,7 @@ void runMilestoneAnimation(MD_Parola &display, MilestoneAnimation animation) {
   case MilestoneAnimation::Views100K:
   case MilestoneAnimation::Views1M:
   case MilestoneAnimation::Views10M:
+  case MilestoneAnimation::Views100M:
     runViewsMilestoneAnimation(display, tier);
     break;
 

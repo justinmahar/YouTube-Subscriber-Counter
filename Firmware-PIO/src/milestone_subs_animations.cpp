@@ -141,56 +141,62 @@ static void subsAnimTier100K(MD_Parola &display) {
   milestoneEffectEnd(ctx);
 }
 
-// +1M — twin megablasts, crossfire chain, extended barrage, shockwave storm.
+// +1M — million-scale: edge surge, trinity blast, firestorm barrages, chain
+// reaction, shockwave storm, comet passes, supernova finale.
 static void subsAnimTier1M(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
   milestoneEffectBegin(ctx);
 
-  milestoneAnimRockets(ctx, 26, 32);
+  milestoneAnimSlowRingBuild(ctx, 14, 54);
+  delay(120);
+  milestoneAnimDualEdgeClimb(ctx, 28);
+  milestoneAnimCounterShimmer(ctx, 10, 32);
   delay(80);
 
-  const int blastX[2] = {ctx.width / 3, 2 * ctx.width / 3};
-  for (int blast = 0; blast < 2; blast++) {
-    for (int ring = 0; ring <= 10; ring++) {
-      milestoneClear(ctx);
-      milestoneDrawExplosionRing(ctx, blastX[blast], ctx.cy, ring);
-      if (ring > 2) {
-        milestoneDrawExplosionRing(ctx, blastX[blast], ctx.cy, ring - 2);
-      }
-      milestoneFrameShow(ctx, ring < 5 ? 26 : 38, min(15, 7 + ring));
-    }
-    delay(60);
-  }
+  milestoneAnimRockets(ctx, 32, 30);
+  delay(70);
+
+  const int trinityX[3] = {ctx.width / 5, ctx.width / 2, 4 * ctx.width / 5};
+  const int trinityY[3] = {ctx.cy, ctx.cy - 1, ctx.cy};
+  milestoneAnimMultiSiteBlast(ctx, trinityX, trinityY, 3, 12, 22, 34, true);
+  milestoneAnimScreenShake(ctx, 10, 20);
+
+  const int wave1X[10] = {1, ctx.width / 7, ctx.width / 4, 3 * ctx.width / 7,
+                            ctx.width / 2, 4 * ctx.width / 7, 3 * ctx.width / 4,
+                            6 * ctx.width / 7, ctx.width - 2, ctx.width / 2};
+  const int wave1Y[10] = {0, 3, 6, 2, 1, 2, 6, 3, 0, 7};
+  milestoneAnimFireworkBarrage(ctx, wave1X, wave1Y, 10, 42, 2, 12, 0.72f, 34);
+
+  const int chainForward[6] = {ctx.width / 12, ctx.width / 4, ctx.width / 2,
+                               3 * ctx.width / 4, 11 * ctx.width / 12,
+                               ctx.width / 2};
+  milestoneAnimChainExplosions(ctx, chainForward, 6, 9, 26, 32);
+
+  const int chainReverse[6] = {11 * ctx.width / 12, 3 * ctx.width / 4,
+                               ctx.width / 2, ctx.width / 4, ctx.width / 12,
+                               ctx.width / 2};
+  milestoneAnimChainExplosions(ctx, chainReverse, 6, 9, 26, 32);
+
+  milestoneAnimShockwaveFlashes(ctx, 7, 48, 38);
+  milestoneAnimDualComets(ctx, 3, 24);
+
+  const int wave2X[13] = {2, ctx.width / 8, ctx.width / 5, 2 * ctx.width / 5,
+                          ctx.width / 2, 3 * ctx.width / 5, 4 * ctx.width / 5,
+                          7 * ctx.width / 8, ctx.width - 3, 4, ctx.width - 5,
+                          ctx.width / 3, 2 * ctx.width / 3};
+  const int wave2Y[13] = {0, 2, 5, 3, 0, 3, 5, 2, 0, 7, 6, 7, 1};
+  milestoneAnimFireworkBarrage(ctx, wave2X, wave2Y, 13, 50, 1, 14, 0.82f, 30);
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 100, 15);
-  milestoneClear(ctx);
-  milestoneFrameShow(ctx, 50, 5);
+  milestoneFrameShow(ctx, 130, 15);
+  milestoneAnimScreenShake(ctx, 8, 18);
 
-  const int barrageX[10] = {2, ctx.width / 6, ctx.width / 4, ctx.width / 3,
-                            ctx.width / 2, 2 * ctx.width / 3, 3 * ctx.width / 4,
-                            5 * ctx.width / 6, ctx.width - 4, ctx.width / 2};
-  const int barrageY[10] = {1, 3, 5, 2, 0, 2, 5, 3, 1, 7};
-  milestoneAnimFireworkBarrage(ctx, barrageX, barrageY, 10, 38, 2, 11, 0.68f, 36);
-
-  milestoneAnimShockwaveFlashes(ctx, 5, 50, 40);
-
-  const int chainX[6] = {ctx.width / 12, ctx.width / 4, ctx.width / 2,
-                         3 * ctx.width / 4, 11 * ctx.width / 12, ctx.width / 2};
-  milestoneAnimChainExplosions(ctx, chainX, 6, 8, 28, 35);
-
-  const int finaleX[11] = {1, ctx.width / 5, 2 * ctx.width / 5, ctx.width / 2,
-                           3 * ctx.width / 5, 4 * ctx.width / 5, ctx.width - 2,
-                           3, ctx.width - 4, ctx.width / 3, 2 * ctx.width / 3};
-  const int finaleY[11] = {0, 2, 4, 1, 3, 5, 0, 7, 6, 6, 7};
-  milestoneAnimFireworkBarrage(ctx, finaleX, finaleY, 11, 40, 1, 12, 0.75f, 38);
-
-  milestoneAnimEmberFallout(ctx, 26, 32);
-  milestoneAnimVictoryPulses(ctx, 4, 130, 80);
-  milestoneAnimFinalFlashes(ctx, 4, 65, 40, 130);
-  milestoneAnimInwardCollapse(ctx, 38);
+  milestoneAnimEmberFallout(ctx, 32, 28);
+  milestoneAnimVictoryPulses(ctx, 6, 110, 65);
+  milestoneAnimFinalFlashes(ctx, 6, 58, 32, 150);
+  milestoneAnimInwardCollapse(ctx, 34);
   milestoneEffectEnd(ctx);
 }
 
@@ -275,7 +281,7 @@ void runSubsMilestoneAnimation(MD_Parola &display, MilestoneTier tier) {
     runSubsTier(display, subsAnimTier100K, tier, 1200, 1500);
     break;
   case MilestoneTier::Tier1M:
-    runSubsTier(display, subsAnimTier1M, tier, 1300, 1600);
+    runSubsTier(display, subsAnimTier1M, tier, 1500, 1900);
     break;
   case MilestoneTier::Tier10M:
     runSubsTier(display, subsAnimTier10M, tier, 1400, 1800);

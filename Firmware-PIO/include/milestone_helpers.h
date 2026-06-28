@@ -67,5 +67,12 @@ void milestoneAnimEmberFallout(MilestoneCtx &ctx, int frames,
 void milestoneAnimFinalFlashes(MilestoneCtx &ctx, int flashCount,
                                 uint16_t flashMs = 70, uint16_t gapMs = 45,
                                 uint16_t lastFlashMs = 120);
+void milestoneAnimMultiSiteBlast(MilestoneCtx &ctx, const int *originX,
+                                 const int *originY, int siteCount, int maxRing,
+                                 uint16_t fastDelayMs, uint16_t slowDelayMs,
+                                 bool flashAfter = false);
+void milestoneAnimDualEdgeClimb(MilestoneCtx &ctx, uint16_t frameDelayMs = 30);
+void milestoneAnimScreenShake(MilestoneCtx &ctx, int frames,
+                              uint16_t frameDelayMs = 22);
 
 #endif

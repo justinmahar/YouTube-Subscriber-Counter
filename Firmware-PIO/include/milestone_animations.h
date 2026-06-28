@@ -12,6 +12,7 @@ enum class MilestoneTier : uint8_t {
   Tier100K = 3,
   Tier1M = 4,
   Tier10M = 5,
+  Tier100M = 6, // views-only apex tier (+100M, 200M, …)
 };
 
 enum class MilestoneAnimation : uint8_t {
@@ -35,6 +36,8 @@ enum class MilestoneAnimation : uint8_t {
   Hours100K = 15,
   Hours1M = 16,
   Hours10M = 17,
+
+  Views100M = 18, // views-only; not part of the 6-tier subs/hours grid
 };
 
 void runMilestoneAnimation(MD_Parola &display, MilestoneAnimation animation);
