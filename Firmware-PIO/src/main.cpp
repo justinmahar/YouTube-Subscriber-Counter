@@ -29,7 +29,8 @@
 #define WIFI_TIMEOUT_MS 15000
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
-const bool ENABLE_WOKWI_SETUP = false;
+const bool ENABLE_WOKWI_SETUP = true;
+const bool DISABLE_INTRO_AND_WIFI_INFO = true;
 
 // Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true to preview
 // animations on boot.
@@ -48,8 +49,10 @@ Preferences prefs;
 
 const unsigned long DISPLAY_UPDATE_MS = 1000;
 const float DEFAULT_STAT_CYCLE_SECONDS = 5.0f;
-const float DEFAULT_LABEL_CYCLE_SECONDS = 2.0f;
+const unsigned int DEFAULT_SCROLL_SPEED_MS = 80;
 const uint8_t STAT_RIGHT_PADDING_COLUMNS = 1;
+const int16_t STAT_SCROLL_OFFSCREEN_MARGIN = 2;
+const char STAT_LABEL_NUMBER_GAP[] = "  ";
 const uint8_t DIGIT_ROLL_FRAME_DELAY_MS = 28;
 const unsigned int DEFAULT_REFRESH_MINUTES = 5;
 const unsigned int MAX_REFRESH_MINUTES = 1440;
@@ -79,7 +82,6 @@ double stat_increase_per_28_days[STAT_COUNT] = {0, 0, 0};
 double stat_baseline_started_at_unix = 0;
 double stats_as_of_unix = 0;
 int current_stat_index = STAT_INDEX_SUBSCRIBERS;
-bool showing_stat_label = false;
 bool statsLoaded = false;
 StaticJsonDocument<1536> doc;
 
@@ -87,7 +89,7 @@ String saved_ssid, saved_pass, saved_endpoint;
 uint8_t saved_stats = STAT_SUBSCRIBERS;
 unsigned int saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
 float saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
-float saved_label_cycle_seconds = DEFAULT_LABEL_CYCLE_SECONDS;
+unsigned int saved_scroll_speed_ms = DEFAULT_SCROLL_SPEED_MS;
 bool configMode = false;
 bool captivePortalActive = false;
 char setupMacSuffix[5] = "";
@@ -101,7 +103,9 @@ void updateSetupDisplay();
 String html_escape(String value);
 bool fetchStats();
 void showProjectedStat();
-void showStatLabel();
+void startStatDisplay();
+void startStatScrollIn();
+bool tickStatScrollAnimation();
 void renderRightAlignedStat(const char *text);
 void renderRightAlignedStatRollingLastDigit(const char *oldText,
                                             const char *newText);
@@ -206,14 +210,14 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
       <div class="hint">Multiple selections cycle on the matrix.</div>
     </div>
     <div>
-      <label>Label display time (seconds)</label>
-      <input type="number" id="label-cycle" step="any" value="LABEL_CYCLE_PLACEHOLDER">
-      <div class="hint">How long each stat label (e.g. Subs:) is shown when cycling.</div>
+      <label>Scroll speed (ms)</label>
+      <input type="number" id="scroll-speed" min="1" step="1" value="SCROLL_SPEED_PLACEHOLDER">
+      <div class="hint">Milliseconds between scroll steps when stats animate onto the display.</div>
     </div>
     <div>
       <label>Value display time (seconds)</label>
       <input type="number" id="stat-cycle" step="any" value="STAT_CYCLE_PLACEHOLDER">
-      <div class="hint">How long each projected number is shown when cycling multiple stats.</div>
+      <div class="hint">How long each stat is shown when cycling (scroll-in and value).</div>
     </div>
     <div>
       <label>Refresh rate (minutes)</label>
@@ -282,7 +286,7 @@ function save(){
   var p=document.getElementById('pw').value;
   var e=document.getElementById('endpoint').value.trim();
   var r=parseInt(document.getElementById('refresh').value,10);
-  var labelCycle=parseFloat(document.getElementById('label-cycle').value);
+  var scrollSpeed=parseInt(document.getElementById('scroll-speed').value,10);
   var statCycle=parseFloat(document.getElementById('stat-cycle').value);
   var stats=0;
   if(document.getElementById('stat-subs').checked)stats|=1;
@@ -292,12 +296,12 @@ function save(){
   if(!e){msg.className='msg err';msg.textContent='Stats API endpoint is required.';return;}
   if(!/^https?:\/\//i.test(e)){msg.className='msg err';msg.textContent='Endpoint must start with http:// or https://';return;}
   if(!stats){msg.className='msg err';msg.textContent='Choose at least one stat to show.';return;}
-  if(!labelCycle||labelCycle<=0){msg.className='msg err';msg.textContent='Label display time must be greater than 0.';return;}
+  if(!scrollSpeed||scrollSpeed<=0){msg.className='msg err';msg.textContent='Scroll speed must be greater than 0.';return;}
   if(!statCycle||statCycle<=0){msg.className='msg err';msg.textContent='Value display time must be greater than 0.';return;}
   if(!r||r<1){msg.className='msg err';msg.textContent='Refresh rate must be at least 1 minute.';return;}
   msg.className='msg ok';msg.textContent='Saving\u2026 device will reboot and connect.';
   fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r+'&labelCycle='+labelCycle+'&statCycle='+statCycle})
+    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r+'&scrollSpeed='+scrollSpeed+'&statCycle='+statCycle})
   .then(r=>r.text()).then(t=>{msg.textContent=t;});
 }
 function uploadFirmware(){
@@ -349,16 +353,12 @@ void loadPrefs() {
   saved_stat_cycle_seconds = prefs.getFloat("statCycle", 0);
   if (saved_stat_cycle_seconds <= 0) {
     unsigned long legacyStatCycle = prefs.getUInt("statCycle", 0);
-    saved_stat_cycle_seconds = legacyStatCycle > 0
-                                   ? (float)legacyStatCycle
-                                   : DEFAULT_STAT_CYCLE_SECONDS;
+    saved_stat_cycle_seconds = legacyStatCycle > 0 ? (float)legacyStatCycle
+                                                   : DEFAULT_STAT_CYCLE_SECONDS;
   }
-  saved_label_cycle_seconds = prefs.getFloat("labelCycle", 0);
-  if (saved_label_cycle_seconds <= 0) {
-    unsigned long legacyLabelCycle = prefs.getUInt("labelCycle", 0);
-    saved_label_cycle_seconds = legacyLabelCycle > 0
-                                    ? (float)legacyLabelCycle
-                                    : DEFAULT_LABEL_CYCLE_SECONDS;
+  saved_scroll_speed_ms = prefs.getUInt("scrollSpeed", 0);
+  if (saved_scroll_speed_ms == 0) {
+    saved_scroll_speed_ms = DEFAULT_SCROLL_SPEED_MS;
   }
   prefs.end();
 
@@ -379,7 +379,7 @@ void loadPrefs() {
 
 void savePrefs(String ssid, String pass, String endpoint, uint8_t stats,
                unsigned int refreshMinutes, float statCycleSeconds,
-               float labelCycleSeconds) {
+               unsigned int scrollSpeedMs) {
   prefs.begin("ytcounter", false);
   prefs.putString("ssid", ssid);
   prefs.putString("pass", pass);
@@ -387,7 +387,7 @@ void savePrefs(String ssid, String pass, String endpoint, uint8_t stats,
   prefs.putUChar("stats", stats);
   prefs.putUInt("refresh", refreshMinutes);
   prefs.putFloat("statCycle", statCycleSeconds);
-  prefs.putFloat("labelCycle", labelCycleSeconds);
+  prefs.putUInt("scrollSpeed", scrollSpeedMs);
   prefs.end();
 }
 
@@ -413,10 +413,8 @@ String buildPage() {
   page.replace("HOURS_CHECKED",
                (saved_stats & STAT_WATCH_HOURS) ? "checked" : "");
   page.replace("REFRESH_PLACEHOLDER", String(saved_refresh_minutes));
-  page.replace("STAT_CYCLE_PLACEHOLDER",
-               String(saved_stat_cycle_seconds, 3));
-  page.replace("LABEL_CYCLE_PLACEHOLDER",
-               String(saved_label_cycle_seconds, 3));
+  page.replace("STAT_CYCLE_PLACEHOLDER", String(saved_stat_cycle_seconds, 3));
+  page.replace("SCROLL_SPEED_PLACEHOLDER", String(saved_scroll_speed_ms));
   return page;
 }
 
@@ -461,10 +459,9 @@ void handleSave() {
     return;
   }
 
-  float labelCycleSeconds = server.arg("labelCycle").toFloat();
-  if (labelCycleSeconds <= 0) {
-    server.send(400, "text/plain",
-                "Label display time must be greater than 0.");
+  unsigned int scrollSpeedMs = server.arg("scrollSpeed").toInt();
+  if (scrollSpeedMs <= 0) {
+    server.send(400, "text/plain", "Scroll speed must be greater than 0.");
     return;
   }
 
@@ -481,7 +478,7 @@ void handleSave() {
   if (new_pass.length() == 0)
     new_pass = saved_pass;
   savePrefs(new_ssid, new_pass, endpoint, stats, refreshMinutes,
-            statCycleSeconds, labelCycleSeconds);
+            statCycleSeconds, scrollSpeedMs);
   server.send(200, "text/plain", "Saved! Rebooting now...");
   delay(1500);
   ESP.restart();
@@ -775,8 +772,20 @@ bool fetchStats() {
 }
 
 static char statDisplayBuffer[20];
+static char statCombinedBuffer[32];
 static String lastDisplayedValue = "";
 static bool statDisplayScrolling = false;
+
+enum StatScrollPhase { SCROLL_NONE, SCROLL_IN, SCROLL_LABEL_OUT };
+static StatScrollPhase statScrollPhase = SCROLL_NONE;
+static int16_t statScrollStep = 0;
+static int16_t statScrollLabelWidth = 0;
+static int16_t statScrollNumberWidth = 0;
+static int16_t statScrollLabelGapCols = 0;
+static int16_t statScrollInStartCol = 0;
+static int16_t statScrollInSteps = 0;
+static int16_t statScrollLabelOutSteps = 0;
+static unsigned long statScrollLastStepMs = 0;
 static double lastMilestoneCheckValue[STAT_COUNT] = {0, 0, 0};
 static bool hasLastMilestoneCheckValue[STAT_COUNT] = {false, false, false};
 
@@ -877,6 +886,7 @@ bool checkAndRunMilestoneAnimation() {
       runMilestoneAnimation(Display, animation);
       lastDisplayedValue = "";
       statDisplayScrolling = false;
+      statScrollPhase = SCROLL_NONE;
       return true;
     }
 
@@ -941,22 +951,52 @@ static void renderRightAlignedStatFrame(const char *newText, char oldLastDigit,
   }
 }
 
-void renderRightAlignedStat(const char *text) {
+static void renderTextAnchored(const char *text, int16_t firstCol) {
   MD_MAX72XX *matrix = Display.getGraphicObject();
   uint8_t charSpacing = Display.getCharSpacing();
-  uint16_t col = STAT_RIGHT_PADDING_COLUMNS;
+  int16_t col = firstCol;
   uint8_t glyph[8];
-
-  matrix->update(MD_MAX72XX::OFF);
-  matrix->clear();
+  uint16_t startCol, endCol;
+  Display.getDisplayExtent(startCol, endCol);
 
   for (int i = (int)strlen(text) - 1; i >= 0; i--) {
     uint8_t glyphWidth = matrix->getChar(text[i], sizeof(glyph), glyph);
     if (glyphWidth == 0)
       continue;
 
-    matrix->setChar(col + glyphWidth - 1, text[i]);
-    col += glyphWidth + charSpacing;
+    int16_t charRight = col + (int16_t)glyphWidth - 1;
+    int16_t charLeft = col;
+    if (charRight >= (int16_t)startCol && charLeft <= (int16_t)endCol) {
+      matrix->setChar((uint16_t)charRight, text[i]);
+    }
+    col += (int16_t)glyphWidth + (int16_t)charSpacing;
+  }
+}
+
+void renderRightAlignedStat(const char *text) {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+
+  matrix->update(MD_MAX72XX::OFF);
+  matrix->clear();
+  renderTextAnchored(text, STAT_RIGHT_PADDING_COLUMNS);
+  matrix->update(MD_MAX72XX::ON);
+}
+
+static void renderStatScrollFrame() {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+
+  matrix->update(MD_MAX72XX::OFF);
+  matrix->clear();
+
+  if (statScrollPhase == SCROLL_IN) {
+    int16_t firstCol = statScrollInStartCol + statScrollStep;
+    renderTextAnchored(statCombinedBuffer, firstCol);
+  } else if (statScrollPhase == SCROLL_LABEL_OUT) {
+    renderTextAnchored(statDisplayBuffer, STAT_RIGHT_PADDING_COLUMNS);
+    int16_t labelFirstCol = (int16_t)STAT_RIGHT_PADDING_COLUMNS +
+                            statScrollNumberWidth + statScrollLabelGapCols +
+                            statScrollStep;
+    renderTextAnchored(STAT_LABELS[current_stat_index], labelFirstCol);
   }
 
   matrix->update(MD_MAX72XX::ON);
@@ -976,23 +1016,90 @@ void renderRightAlignedStatRollingLastDigit(const char *oldText,
   matrix->update(MD_MAX72XX::ON);
 }
 
-void showStatLabel() {
-  if (selectedStatsCount() <= 1)
+void startStatScrollIn() {
+  if (selectedStatsCount() <= 1 || !statsLoaded)
     return;
 
   ensureCurrentStatSelected();
   statDisplayScrolling = false;
   lastDisplayedValue = "";
-  renderRightAlignedStat(STAT_LABELS[current_stat_index]);
-  Serial.println(STAT_LABELS[current_stat_index]);
+
+  double currentUnixTimestamp =
+      stats_as_of_unix + ((millis() - stats_fetched_at) / 1000.0);
+  double projected =
+      getProjectedStatValue(current_stat_index, currentUnixTimestamp);
+  String formatted = stat_format(projected, current_stat_index);
+  formatted.toCharArray(statDisplayBuffer, sizeof(statDisplayBuffer));
+
+  uint16_t startCol, endCol;
+  Display.getDisplayExtent(startCol, endCol);
+  uint16_t displayWidth = endCol - startCol + 1;
+  statScrollNumberWidth = Display.getTextColumns(statDisplayBuffer);
+
+  if (statScrollNumberWidth + STAT_RIGHT_PADDING_COLUMNS > displayWidth) {
+    statScrollPhase = SCROLL_NONE;
+    statDisplayScrolling = true;
+    Display.displayScroll(statDisplayBuffer, PA_RIGHT, PA_SCROLL_LEFT,
+                          saved_scroll_speed_ms);
+    lastDisplayedValue = formatted;
+    cycle_lasttime = millis();
+    Serial.println(formatted);
+    return;
+  }
+
+  snprintf(statCombinedBuffer, sizeof(statCombinedBuffer), "%s%s%s",
+           STAT_LABELS[current_stat_index], STAT_LABEL_NUMBER_GAP,
+           statDisplayBuffer);
+
+  statScrollLabelWidth =
+      Display.getTextColumns(STAT_LABELS[current_stat_index]);
+  statScrollLabelGapCols = Display.getTextColumns(STAT_LABEL_NUMBER_GAP);
+  uint16_t combinedWidth = Display.getTextColumns(statCombinedBuffer);
+  statScrollInStartCol = -(int16_t)combinedWidth - STAT_SCROLL_OFFSCREEN_MARGIN;
+  statScrollInSteps =
+      (int16_t)STAT_RIGHT_PADDING_COLUMNS - statScrollInStartCol;
+  statScrollLabelOutSteps = statScrollLabelWidth + 4;
+  statScrollStep = 0;
+  statScrollPhase = SCROLL_IN;
+  statScrollLastStepMs = millis();
+  renderStatScrollFrame();
+  Serial.println(statCombinedBuffer);
+}
+
+bool tickStatScrollAnimation() {
+  if (statScrollPhase == SCROLL_NONE)
+    return false;
+
+  unsigned long now = millis();
+  if (now - statScrollLastStepMs < saved_scroll_speed_ms)
+    return true;
+
+  statScrollLastStepMs = now;
+
+  if (statScrollPhase == SCROLL_IN) {
+    statScrollStep++;
+    if (statScrollStep > statScrollInSteps) {
+      statScrollPhase = SCROLL_LABEL_OUT;
+      statScrollStep = 0;
+    }
+  } else if (statScrollPhase == SCROLL_LABEL_OUT) {
+    statScrollStep++;
+    if (statScrollStep >= statScrollLabelOutSteps) {
+      statScrollPhase = SCROLL_NONE;
+      renderRightAlignedStat(statDisplayBuffer);
+      lastDisplayedValue = String(statDisplayBuffer);
+      return false;
+    }
+  }
+
+  renderStatScrollFrame();
+  return true;
 }
 
 void startStatDisplay() {
   if (selectedStatsCount() > 1) {
-    showing_stat_label = true;
-    showStatLabel();
+    startStatScrollIn();
   } else {
-    showing_stat_label = false;
     lastDisplayedValue = "";
     showProjectedStat();
   }
@@ -1033,7 +1140,8 @@ void showProjectedStat() {
     }
   } else {
     statDisplayScrolling = true;
-    Display.displayScroll(statDisplayBuffer, PA_RIGHT, PA_SCROLL_LEFT, 80);
+    Display.displayScroll(statDisplayBuffer, PA_RIGHT, PA_SCROLL_LEFT,
+                          saved_scroll_speed_ms);
   }
   lastDisplayedValue = formatted;
 }
@@ -1253,13 +1361,13 @@ void runBootAnimation() {
   matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
 
   bootAnimRain(matrix, colStart, colEnd, width, height);
-  bootShowCenteredText("YOUTUBE", 1100);
+  bootShowCenteredText("YouTube", 1100);
 
   bootAnimPlasma(matrix, colStart, width, height);
-  bootShowCenteredText("STATS", 1100);
+  bootShowCenteredText("Stats", 1100);
 
   bootAnimSpectrum(matrix, colStart, width, height);
-  bootShowCenteredText("COUNTER!", 1100);
+  bootShowCenteredText("Counter!", 1100);
 
   bootAnimFinale(matrix, colStart, colEnd, width, height);
 
@@ -1315,12 +1423,14 @@ void setup() {
   Display.setTextAlignment(PA_CENTER);
 
   randomSeed(esp_random());
-  if (RUN_MILESTONE_TEST_ON_BOOT) {
-    for (MilestoneAnimation anim : HOURS_BOOT_PREVIEW) {
-      runMilestoneAnimation(Display, anim);
+  if (!DISABLE_INTRO_AND_WIFI_INFO) {
+    if (RUN_MILESTONE_TEST_ON_BOOT) {
+      for (MilestoneAnimation anim : HOURS_BOOT_PREVIEW) {
+        runMilestoneAnimation(Display, anim);
+      }
+    } else {
+      runBootAnimation();
     }
-  } else {
-    runBootAnimation();
   }
 
   loadPrefs();
@@ -1349,13 +1459,15 @@ void setup() {
       Serial.print("Connected! IP: ");
       Serial.println(WiFi.localIP());
 
-      // Scroll IP across matrix then pause on last frame for 2 seconds
-      String ip = WiFi.localIP().toString();
-      Display.displayScroll(ip.c_str(), PA_LEFT, PA_SCROLL_LEFT, 80);
-      while (!Display.displayAnimate()) {
-        delay(10);
+      if (!DISABLE_INTRO_AND_WIFI_INFO) {
+        // Scroll IP across matrix then pause on last frame for 2 seconds
+        String ip = WiFi.localIP().toString();
+        Display.displayScroll(ip.c_str(), PA_LEFT, PA_SCROLL_LEFT, 80);
+        while (!Display.displayAnimate()) {
+          delay(10);
+        }
+        delay(2000);
       }
-      delay(2000);
 
       registerRoutes();
       server.begin();
@@ -1412,8 +1524,8 @@ void loop() {
     if (statsLoaded) {
       if (checkAndRunMilestoneAnimation()) {
         now = millis();
-        if (showing_stat_label) {
-          showStatLabel();
+        if (selectedStatsCount() > 1) {
+          startStatScrollIn();
         } else {
           showProjectedStat();
         }
@@ -1421,39 +1533,26 @@ void loop() {
         display_lasttime = now;
       }
 
-      if (statDisplayScrolling && !showing_stat_label) {
+      if (statDisplayScrolling && statScrollPhase == SCROLL_NONE) {
         Display.displayAnimate();
       }
 
       if (selectedStatsCount() > 1) {
-        unsigned long phaseMs =
-            showing_stat_label
-                ? (unsigned long)(saved_label_cycle_seconds * 1000.0f)
-                : (unsigned long)(saved_stat_cycle_seconds * 1000.0f);
-
-        if (now - cycle_lasttime >= phaseMs) {
-          if (showing_stat_label) {
-            showing_stat_label = false;
-            lastDisplayedValue = "";
-            showProjectedStat();
-          } else {
-            current_stat_index = nextSelectedStatIndex(current_stat_index);
-            showing_stat_label = true;
-            showStatLabel();
-          }
+        if (tickStatScrollAnimation()) {
+          // Label/number scroll animation in progress.
+        } else if (now - cycle_lasttime >=
+                   (unsigned long)(saved_stat_cycle_seconds * 1000.0f)) {
+          current_stat_index = nextSelectedStatIndex(current_stat_index);
+          startStatScrollIn();
           cycle_lasttime = now;
           display_lasttime = now;
-        } else if (!showing_stat_label &&
-                   now - display_lasttime >= DISPLAY_UPDATE_MS) {
+        } else if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
           showProjectedStat();
           display_lasttime = now;
         }
-      } else {
-        showing_stat_label = false;
-        if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
-          showProjectedStat();
-          display_lasttime = now;
-        }
+      } else if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
+        showProjectedStat();
+        display_lasttime = now;
       }
     }
   }
