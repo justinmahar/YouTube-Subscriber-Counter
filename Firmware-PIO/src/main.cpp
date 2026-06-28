@@ -49,7 +49,7 @@ Preferences prefs;
 
 const unsigned long DISPLAY_UPDATE_MS = 1000;
 const float DEFAULT_STAT_CYCLE_SECONDS = 5.0f;
-const unsigned int DEFAULT_SCROLL_SPEED_MS = 80;
+const unsigned int DEFAULT_SCROLL_SPEED_MS = 50;
 const uint8_t STAT_RIGHT_PADDING_COLUMNS = 1;
 const int16_t STAT_SCROLL_OFFSCREEN_MARGIN = 2;
 const int16_t STAT_LABEL_NUMBER_GAP_COLUMNS = 6;
@@ -105,6 +105,7 @@ bool fetchStats();
 void showProjectedStat();
 void startStatDisplay();
 void startStatScrollIn();
+void startStatExitTransition();
 bool tickStatScrollAnimation();
 void renderRightAlignedStat(const char *text);
 void renderRightAlignedStatRollingLastDigit(const char *oldText,
@@ -776,8 +777,18 @@ static char statCombinedBuffer[32];
 static String lastDisplayedValue = "";
 static bool statDisplayScrolling = false;
 
-enum StatScrollPhase { SCROLL_NONE, SCROLL_IN, SCROLL_LABEL_OUT };
+enum StatExitEffect { EXIT_DISSOLVE, EXIT_WIPE, EXIT_DROP, EXIT_EFFECT_COUNT };
+enum StatScrollPhase { SCROLL_NONE, SCROLL_EXIT, SCROLL_IN, SCROLL_LABEL_OUT };
 static StatScrollPhase statScrollPhase = SCROLL_NONE;
+static StatExitEffect statExitEffect = EXIT_DISSOLVE;
+static bool statExitFrame[8][32];
+static uint16_t statExitColStart = 0;
+static uint16_t statExitColEnd = 0;
+static uint16_t statExitFrameWidth = 0;
+static uint8_t statExitStep = 0;
+static uint8_t statExitMaxSteps = 0;
+static const uint8_t STAT_EXIT_DISSOLVE_FRAMES = 14;
+static const uint8_t STAT_EXIT_DROP_FRAMES = 10;
 static int16_t statScrollStep = 0;
 static int16_t statScrollLabelWidth = 0;
 static int16_t statScrollNumberWidth = 0;
@@ -972,6 +983,159 @@ static void renderTextAnchored(const char *text, int16_t firstCol) {
   }
 }
 
+static void renderTextToExitFrame(const char *text, int16_t firstCol) {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+  uint8_t charSpacing = Display.getCharSpacing();
+  int16_t col = firstCol;
+  uint8_t glyph[8];
+
+  for (int i = (int)strlen(text) - 1; i >= 0; i--) {
+    uint8_t glyphWidth = matrix->getChar(text[i], sizeof(glyph), glyph);
+    if (glyphWidth == 0)
+      continue;
+
+    int16_t charRight = col + (int16_t)glyphWidth - 1;
+    for (uint8_t glyphCol = 0; glyphCol < glyphWidth; glyphCol++) {
+      int16_t matrixCol = charRight - (int16_t)glyphCol;
+      if (matrixCol < (int16_t)statExitColStart ||
+          matrixCol > (int16_t)statExitColEnd) {
+        continue;
+      }
+
+      uint16_t localCol = (uint16_t)(matrixCol - (int16_t)statExitColStart);
+      for (uint8_t row = 0; row < 8; row++) {
+        if ((glyph[glyphCol] & (1 << row)) != 0) {
+          statExitFrame[row][localCol] = true;
+        }
+      }
+    }
+    col += (int16_t)glyphWidth + (int16_t)charSpacing;
+  }
+}
+
+static void captureStatExitFrame() {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+  Display.getDisplayExtent(statExitColStart, statExitColEnd);
+  statExitFrameWidth = statExitColEnd - statExitColStart + 1;
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+      statExitFrame[row][col] = false;
+    }
+  }
+
+  if (statDisplayScrolling) {
+    for (uint8_t row = 0; row < 8; row++) {
+      for (uint16_t col = statExitColStart; col <= statExitColEnd; col++) {
+        statExitFrame[row][col - statExitColStart] =
+            matrix->getPoint(row, col);
+      }
+    }
+    return;
+  }
+
+  renderTextToExitFrame(statDisplayBuffer, STAT_RIGHT_PADDING_COLUMNS);
+}
+
+static void advanceStatExitDissolve() {
+  bool anyRemaining = false;
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+      if (!statExitFrame[row][col]) {
+        continue;
+      }
+      if (random(100) < 35) {
+        statExitFrame[row][col] = false;
+      } else {
+        anyRemaining = true;
+      }
+    }
+  }
+
+  if (!anyRemaining) {
+    statExitStep = statExitMaxSteps;
+  }
+}
+
+static void advanceStatExitDrop() {
+  bool nextFrame[8][32] = {{false}};
+  bool anyRemaining = false;
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+      if (!statExitFrame[row][col]) {
+        continue;
+      }
+      if (row < 7) {
+        nextFrame[row + 1][col] = true;
+        anyRemaining = true;
+      }
+    }
+  }
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+      statExitFrame[row][col] = nextFrame[row][col];
+    }
+  }
+
+  if (!anyRemaining) {
+    statExitStep = statExitMaxSteps;
+  }
+}
+
+static void renderStatExitFrame() {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+
+  matrix->update(MD_MAX72XX::OFF);
+  matrix->clear();
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t localCol = 0; localCol < statExitFrameWidth; localCol++) {
+      if (!statExitFrame[row][localCol]) {
+        continue;
+      }
+
+      uint16_t matrixCol = statExitColStart + localCol;
+      if (statExitEffect == EXIT_WIPE &&
+          matrixCol > statExitColEnd - statExitStep) {
+        continue;
+      }
+
+      matrix->setPoint(row, matrixCol, true);
+    }
+  }
+
+  matrix->update(MD_MAX72XX::ON);
+}
+
+void startStatExitTransition() {
+  if (selectedStatsCount() <= 1 || !statsLoaded ||
+      statScrollPhase != SCROLL_NONE) {
+    return;
+  }
+
+  statDisplayScrolling = false;
+  Display.displayClear();
+  captureStatExitFrame();
+
+  statExitEffect = (StatExitEffect)random((long)EXIT_EFFECT_COUNT);
+  statExitStep = 0;
+  if (statExitEffect == EXIT_WIPE) {
+    statExitMaxSteps =
+        statExitFrameWidth > 255 ? 255 : (uint8_t)statExitFrameWidth;
+  } else if (statExitEffect == EXIT_DISSOLVE) {
+    statExitMaxSteps = STAT_EXIT_DISSOLVE_FRAMES;
+  } else {
+    statExitMaxSteps = STAT_EXIT_DROP_FRAMES;
+  }
+
+  statScrollPhase = SCROLL_EXIT;
+  statScrollLastStepMs = millis();
+  renderStatExitFrame();
+}
+
 void renderRightAlignedStat(const char *text) {
   MD_MAX72XX *matrix = Display.getGraphicObject();
 
@@ -989,8 +1153,8 @@ static void renderStatScrollFrame() {
 
   if (statScrollPhase == SCROLL_IN) {
     int16_t numberFirstCol = statScrollInStartCol + statScrollStep;
-    int16_t labelFirstCol = numberFirstCol + statScrollNumberWidth +
-                             STAT_LABEL_NUMBER_GAP_COLUMNS;
+    int16_t labelFirstCol =
+        numberFirstCol + statScrollNumberWidth + STAT_LABEL_NUMBER_GAP_COLUMNS;
     renderTextAnchored(statDisplayBuffer, numberFirstCol);
     renderTextAnchored(STAT_LABELS[current_stat_index], labelFirstCol);
   } else if (statScrollPhase == SCROLL_LABEL_OUT) {
@@ -1050,14 +1214,12 @@ void startStatScrollIn() {
   }
 
   snprintf(statCombinedBuffer, sizeof(statCombinedBuffer), "%s %s",
-           STAT_LABELS[current_stat_index],
-           statDisplayBuffer);
+           STAT_LABELS[current_stat_index], statDisplayBuffer);
 
   statScrollLabelWidth =
       Display.getTextColumns(STAT_LABELS[current_stat_index]);
   int16_t combinedWidth = statScrollNumberWidth +
-                          STAT_LABEL_NUMBER_GAP_COLUMNS +
-                          statScrollLabelWidth;
+                          STAT_LABEL_NUMBER_GAP_COLUMNS + statScrollLabelWidth;
   statScrollInStartCol = -(int16_t)combinedWidth - STAT_SCROLL_OFFSCREEN_MARGIN;
   statScrollInSteps =
       (int16_t)STAT_RIGHT_PADDING_COLUMNS - statScrollInStartCol;
@@ -1079,6 +1241,28 @@ bool tickStatScrollAnimation() {
 
   statScrollLastStepMs = now;
 
+  if (statScrollPhase == SCROLL_EXIT) {
+    statExitStep++;
+    if (statExitStep >= statExitMaxSteps) {
+      MD_MAX72XX *matrix = Display.getGraphicObject();
+      matrix->update(MD_MAX72XX::OFF);
+      matrix->clear();
+      matrix->update(MD_MAX72XX::ON);
+      statScrollPhase = SCROLL_NONE;
+      lastDisplayedValue = "";
+      current_stat_index = nextSelectedStatIndex(current_stat_index);
+      startStatScrollIn();
+      return true;
+    }
+    if (statExitEffect == EXIT_DISSOLVE) {
+      advanceStatExitDissolve();
+    } else if (statExitEffect == EXIT_DROP) {
+      advanceStatExitDrop();
+    }
+    renderStatExitFrame();
+    return true;
+  }
+
   if (statScrollPhase == SCROLL_IN) {
     statScrollStep++;
     if (statScrollStep > statScrollInSteps) {
@@ -1091,7 +1275,9 @@ bool tickStatScrollAnimation() {
       statScrollPhase = SCROLL_NONE;
       renderRightAlignedStat(statDisplayBuffer);
       lastDisplayedValue = String(statDisplayBuffer);
-      return false;
+      cycle_lasttime = now;
+      display_lasttime = now;
+      return true;
     }
   }
 
@@ -1545,9 +1731,7 @@ void loop() {
           // Label/number scroll animation in progress.
         } else if (now - cycle_lasttime >=
                    (unsigned long)(saved_stat_cycle_seconds * 1000.0f)) {
-          current_stat_index = nextSelectedStatIndex(current_stat_index);
-          startStatScrollIn();
-          cycle_lasttime = now;
+          startStatExitTransition();
           display_lasttime = now;
         } else if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
           showProjectedStat();
