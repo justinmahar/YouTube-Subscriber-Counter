@@ -29,7 +29,7 @@
 #define WIFI_TIMEOUT_MS 15000
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
-const bool ENABLE_WOKWI_SETUP = true;
+const bool ENABLE_WOKWI_SETUP = false;
 
 // Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true to preview
 // animations on boot.
