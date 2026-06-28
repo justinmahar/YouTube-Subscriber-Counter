@@ -192,6 +192,8 @@ Simulate the ESP32 + 4-module MAX7219 matrix without hardware.
 5. Open **`http://localhost:8180`** (not `https://`) in your browser to access the simulated setup portal.
 6. On first boot the firmware auto-connects to **`Wokwi-GUEST`** for simulator setup. Enter your private stats endpoint, choose stats, set refresh minutes, and save.
 
+For development, `ENABLE_WOKWI_SETUP` in `Firmware-PIO/src/main.cpp` is set to `true` so the firmware tries `Wokwi-GUEST` before starting the normal setup hotspot. Set it to `false` for hardware-only builds if you do not want the display to show `Wokwi...` during setup.
+
 If `localhost:8180` does not load:
 
 - Confirm the workspace root is **`Firmware-PIO`**, not the parent repo folder.

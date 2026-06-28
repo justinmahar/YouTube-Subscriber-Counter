@@ -1,16 +1,16 @@
 // Library Imports
-#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
-#include <Wire.h>
-#include <MD_Parola.h>
-#include <MD_MAX72xx.h>
-#include <SPI.h>
-#include <HTTPClient.h>
-#include <WiFi.h>
-#include <WebServer.h>
 #include <DNSServer.h>
+#include <HTTPClient.h>
+#include <MD_MAX72xx.h>
+#include <MD_Parola.h>
 #include <Preferences.h>
+#include <SPI.h>
 #include <Update.h>
+#include <WebServer.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <Wire.h>
 #include <math.h>
 
 // File imports
@@ -18,7 +18,7 @@
 
 // Hardware config
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
-//#define HARDWARE_TYPE MD_MAX72XX::GENERIC_HW
+// #define HARDWARE_TYPE MD_MAX72XX::GENERIC_HW
 #define MAX_DEVICES 4
 #define CS_PIN 5
 
@@ -28,6 +28,8 @@
 #define WIFI_TIMEOUT_MS 15000
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
+const bool ENABLE_WOKWI_SETUP = true;
+
 MD_Parola Display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 WiFiClientSecure client;
 WebServer server(80);
@@ -35,8 +37,12 @@ DNSServer dnsServer;
 Preferences prefs;
 
 const unsigned long DISPLAY_UPDATE_MS = 1000;
-const unsigned long STAT_CYCLE_MS = 5000;
+const unsigned int DEFAULT_STAT_CYCLE_SECONDS = 5;
+const unsigned int DEFAULT_LABEL_CYCLE_SECONDS = 2;
+const unsigned int MIN_CYCLE_SECONDS = 1;
+const unsigned int MAX_CYCLE_SECONDS = 120;
 const uint8_t STAT_RIGHT_PADDING_COLUMNS = 1;
+const uint8_t DIGIT_ROLL_FRAME_DELAY_MS = 28;
 const unsigned int DEFAULT_REFRESH_MINUTES = 5;
 const unsigned int MAX_REFRESH_MINUTES = 1440;
 const double SECONDS_PER_28_DAYS = 28.0 * 24.0 * 60.0 * 60.0;
@@ -52,23 +58,28 @@ const int STAT_INDEX_VIEWS = 1;
 const int STAT_INDEX_WATCH_HOURS = 2;
 const int STAT_COUNT = 3;
 
-const uint8_t STAT_MASKS[STAT_COUNT] = { STAT_SUBSCRIBERS, STAT_VIEWS, STAT_WATCH_HOURS };
+const uint8_t STAT_MASKS[STAT_COUNT] = {STAT_SUBSCRIBERS, STAT_VIEWS,
+                                        STAT_WATCH_HOURS};
+const char *STAT_LABELS[STAT_COUNT] = {"Subs:", "Views:", "Hours:"};
 
 unsigned long api_lasttime = 0;
 unsigned long display_lasttime = 0;
 unsigned long cycle_lasttime = 0;
 unsigned long stats_fetched_at = 0;
-double stat_baseline_values[STAT_COUNT] = { 0, 0, 0 };
-double stat_increase_per_28_days[STAT_COUNT] = { 0, 0, 0 };
+double stat_baseline_values[STAT_COUNT] = {0, 0, 0};
+double stat_increase_per_28_days[STAT_COUNT] = {0, 0, 0};
 double stat_baseline_started_at_unix = 0;
 double stats_as_of_unix = 0;
 int current_stat_index = STAT_INDEX_SUBSCRIBERS;
+bool showing_stat_label = false;
 bool statsLoaded = false;
 StaticJsonDocument<1536> doc;
 
 String saved_ssid, saved_pass, saved_endpoint;
 uint8_t saved_stats = STAT_SUBSCRIBERS;
 unsigned int saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
+unsigned int saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
+unsigned int saved_label_cycle_seconds = DEFAULT_LABEL_CYCLE_SECONDS;
 bool configMode = false;
 bool captivePortalActive = false;
 char setupMacSuffix[5] = "";
@@ -82,12 +93,22 @@ void updateSetupDisplay();
 String html_escape(String value);
 bool fetchStats();
 void showProjectedStat();
+void showStatLabel();
 void renderRightAlignedStat(const char *text);
+void renderRightAlignedStatRollingLastDigit(const char *oldText,
+                                            const char *newText);
 double getProjectedStatValue(int statIndex, double currentUnixTimestamp);
-double getProjectedWholeStatValue(double baselineStartedAtUnix, double startingValue, double increasePer28Days, double currentUnixTimestamp);
-double getProjectedFractionalStatValue(double baselineStartedAtUnix, double startingValue, double increasePer28Days, double currentUnixTimestamp);
+double getProjectedWholeStatValue(double baselineStartedAtUnix,
+                                  double startingValue,
+                                  double increasePer28Days,
+                                  double currentUnixTimestamp);
+double getProjectedFractionalStatValue(double baselineStartedAtUnix,
+                                       double startingValue,
+                                       double increasePer28Days,
+                                       double currentUnixTimestamp);
 
-// ─── Config portal HTML ───────────────────────────────────────────────────────
+// ─── Config portal HTML
+// ───────────────────────────────────────────────────────
 const char CONFIG_HTML[] PROGMEM = R"rawhtml(
 <!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -176,6 +197,16 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
       <div class="hint">Multiple selections cycle on the matrix.</div>
     </div>
     <div>
+      <label>Label display time (seconds)</label>
+      <input type="number" id="label-cycle" min="1" max="120" step="1" value="LABEL_CYCLE_PLACEHOLDER">
+      <div class="hint">How long each stat label (e.g. Subs:) is shown when cycling. Must be shorter than the value time below.</div>
+    </div>
+    <div>
+      <label>Value display time (seconds)</label>
+      <input type="number" id="stat-cycle" min="1" max="120" step="1" value="STAT_CYCLE_PLACEHOLDER">
+      <div class="hint">How long each projected number is shown when cycling multiple stats.</div>
+    </div>
+    <div>
       <label>Refresh rate (minutes)</label>
       <input type="number" id="refresh" min="1" max="1440" step="1" value="REFRESH_PLACEHOLDER">
       <div class="hint">The display projects values every second between API refreshes.</div>
@@ -242,6 +273,8 @@ function save(){
   var p=document.getElementById('pw').value;
   var e=document.getElementById('endpoint').value.trim();
   var r=parseInt(document.getElementById('refresh').value,10);
+  var labelCycle=parseInt(document.getElementById('label-cycle').value,10);
+  var statCycle=parseInt(document.getElementById('stat-cycle').value,10);
   var stats=0;
   if(document.getElementById('stat-subs').checked)stats|=1;
   if(document.getElementById('stat-views').checked)stats|=2;
@@ -250,10 +283,13 @@ function save(){
   if(!e){msg.className='msg err';msg.textContent='Stats API endpoint is required.';return;}
   if(!/^https?:\/\//i.test(e)){msg.className='msg err';msg.textContent='Endpoint must start with http:// or https://';return;}
   if(!stats){msg.className='msg err';msg.textContent='Choose at least one stat to show.';return;}
+  if(!labelCycle||labelCycle<1){msg.className='msg err';msg.textContent='Label display time must be at least 1 second.';return;}
+  if(!statCycle||statCycle<1){msg.className='msg err';msg.textContent='Value display time must be at least 1 second.';return;}
+  if(labelCycle>=statCycle){msg.className='msg err';msg.textContent='Label display time must be shorter than value display time.';return;}
   if(!r||r<1){msg.className='msg err';msg.textContent='Refresh rate must be at least 1 minute.';return;}
   msg.className='msg ok';msg.textContent='Saving\u2026 device will reboot and connect.';
   fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r})
+    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r+'&labelCycle='+labelCycle+'&statCycle='+statCycle})
   .then(r=>r.text()).then(t=>{msg.textContent=t;});
 }
 function uploadFirmware(){
@@ -293,19 +329,41 @@ function uploadFirmware(){
 </body></html>
 )rawhtml";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers
+// ──────────────────────────────────────────────────────────────────
 void loadPrefs() {
   prefs.begin("ytcounter", true);
-  saved_ssid            = prefs.getString("ssid", "");
-  saved_pass            = prefs.getString("pass", "");
-  saved_endpoint        = prefs.getString("endpoint", "");
-  saved_stats           = prefs.getUChar("stats", STAT_SUBSCRIBERS) & STAT_ALL;
+  saved_ssid = prefs.getString("ssid", "");
+  saved_pass = prefs.getString("pass", "");
+  saved_endpoint = prefs.getString("endpoint", "");
+  saved_stats = prefs.getUChar("stats", STAT_SUBSCRIBERS) & STAT_ALL;
   saved_refresh_minutes = prefs.getUInt("refresh", DEFAULT_REFRESH_MINUTES);
+  saved_stat_cycle_seconds =
+      prefs.getUInt("statCycle", DEFAULT_STAT_CYCLE_SECONDS);
+  saved_label_cycle_seconds =
+      prefs.getUInt("labelCycle", DEFAULT_LABEL_CYCLE_SECONDS);
   prefs.end();
 
-  if (saved_stats == 0) saved_stats = STAT_SUBSCRIBERS;
-  if (saved_refresh_minutes < 1) saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
-  if (saved_refresh_minutes > MAX_REFRESH_MINUTES) saved_refresh_minutes = MAX_REFRESH_MINUTES;
+  if (saved_stats == 0)
+    saved_stats = STAT_SUBSCRIBERS;
+  if (saved_refresh_minutes < 1)
+    saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
+  if (saved_refresh_minutes > MAX_REFRESH_MINUTES)
+    saved_refresh_minutes = MAX_REFRESH_MINUTES;
+  if (saved_stat_cycle_seconds < MIN_CYCLE_SECONDS)
+    saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
+  if (saved_stat_cycle_seconds > MAX_CYCLE_SECONDS)
+    saved_stat_cycle_seconds = MAX_CYCLE_SECONDS;
+  if (saved_label_cycle_seconds < MIN_CYCLE_SECONDS)
+    saved_label_cycle_seconds = DEFAULT_LABEL_CYCLE_SECONDS;
+  if (saved_label_cycle_seconds >= saved_stat_cycle_seconds) {
+    if (saved_stat_cycle_seconds <= MIN_CYCLE_SECONDS)
+      saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
+    saved_label_cycle_seconds =
+        min(DEFAULT_LABEL_CYCLE_SECONDS, saved_stat_cycle_seconds - 1);
+    if (saved_label_cycle_seconds < MIN_CYCLE_SECONDS)
+      saved_label_cycle_seconds = MIN_CYCLE_SECONDS;
+  }
 
   Serial.print("Config loaded: ssid=");
   Serial.print(saved_ssid.length() ? saved_ssid : "(empty)");
@@ -315,13 +373,17 @@ void loadPrefs() {
   Serial.println(saved_stats);
 }
 
-void savePrefs(String ssid, String pass, String endpoint, uint8_t stats, unsigned int refreshMinutes) {
+void savePrefs(String ssid, String pass, String endpoint, uint8_t stats,
+               unsigned int refreshMinutes, unsigned int statCycleSeconds,
+               unsigned int labelCycleSeconds) {
   prefs.begin("ytcounter", false);
   prefs.putString("ssid", ssid);
   prefs.putString("pass", pass);
   prefs.putString("endpoint", endpoint);
   prefs.putUChar("stats", stats);
   prefs.putUInt("refresh", refreshMinutes);
+  prefs.putUInt("statCycle", statCycleSeconds);
+  prefs.putUInt("labelCycle", labelCycleSeconds);
   prefs.end();
 }
 
@@ -336,21 +398,25 @@ String html_escape(String value) {
 
 String buildPage() {
   String page = String(CONFIG_HTML);
-  String ip = configMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
+  String ip =
+      configMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
   page.replace("IP_PLACEHOLDER", ip);
   page.replace("SSID_PLACEHOLDER", html_escape(saved_ssid));
   page.replace("ENDPOINT_PLACEHOLDER", html_escape(saved_endpoint));
-  page.replace("SUBS_CHECKED", (saved_stats & STAT_SUBSCRIBERS) ? "checked" : "");
+  page.replace("SUBS_CHECKED",
+               (saved_stats & STAT_SUBSCRIBERS) ? "checked" : "");
   page.replace("VIEWS_CHECKED", (saved_stats & STAT_VIEWS) ? "checked" : "");
-  page.replace("HOURS_CHECKED", (saved_stats & STAT_WATCH_HOURS) ? "checked" : "");
+  page.replace("HOURS_CHECKED",
+               (saved_stats & STAT_WATCH_HOURS) ? "checked" : "");
   page.replace("REFRESH_PLACEHOLDER", String(saved_refresh_minutes));
+  page.replace("STAT_CYCLE_PLACEHOLDER", String(saved_stat_cycle_seconds));
+  page.replace("LABEL_CYCLE_PLACEHOLDER", String(saved_label_cycle_seconds));
   return page;
 }
 
-// ─── Server handlers ──────────────────────────────────────────────────────────
-void handleRoot() {
-  server.send(200, "text/html", buildPage());
-}
+// ─── Server handlers
+// ──────────────────────────────────────────────────────────
+void handleRoot() { server.send(200, "text/html", buildPage()); }
 
 void handleSave() {
   if (!server.hasArg("endpoint")) {
@@ -365,7 +431,8 @@ void handleSave() {
     return;
   }
   if (!endpoint.startsWith("http://") && !endpoint.startsWith("https://")) {
-    server.send(400, "text/plain", "Endpoint must start with http:// or https://");
+    server.send(400, "text/plain",
+                "Endpoint must start with http:// or https://");
     return;
   }
 
@@ -376,8 +443,25 @@ void handleSave() {
   }
 
   int refreshMinutes = server.arg("refresh").toInt();
-  if (refreshMinutes < 1) refreshMinutes = 1;
-  if (refreshMinutes > MAX_REFRESH_MINUTES) refreshMinutes = MAX_REFRESH_MINUTES;
+  if (refreshMinutes < 1)
+    refreshMinutes = 1;
+  if (refreshMinutes > MAX_REFRESH_MINUTES)
+    refreshMinutes = MAX_REFRESH_MINUTES;
+
+  int statCycleSeconds = server.arg("statCycle").toInt();
+  if (statCycleSeconds < MIN_CYCLE_SECONDS)
+    statCycleSeconds = MIN_CYCLE_SECONDS;
+  if (statCycleSeconds > MAX_CYCLE_SECONDS)
+    statCycleSeconds = MAX_CYCLE_SECONDS;
+
+  int labelCycleSeconds = server.arg("labelCycle").toInt();
+  if (labelCycleSeconds < MIN_CYCLE_SECONDS)
+    labelCycleSeconds = MIN_CYCLE_SECONDS;
+  if (labelCycleSeconds >= statCycleSeconds) {
+    server.send(400, "text/plain",
+                "Label display time must be shorter than value display time.");
+    return;
+  }
 
   String new_ssid = server.arg("ssid");
   new_ssid.trim();
@@ -389,15 +473,17 @@ void handleSave() {
     }
   }
   String new_pass = server.arg("pass");
-  if (new_pass.length() == 0) new_pass = saved_pass;
-  savePrefs(new_ssid, new_pass, endpoint, stats, refreshMinutes);
+  if (new_pass.length() == 0)
+    new_pass = saved_pass;
+  savePrefs(new_ssid, new_pass, endpoint, stats, refreshMinutes,
+            statCycleSeconds, labelCycleSeconds);
   server.send(200, "text/plain", "Saved! Rebooting now...");
   delay(1500);
   ESP.restart();
 }
 
 void handleUpdate() {
-  HTTPUpload& upload = server.upload();
+  HTTPUpload &upload = server.upload();
 
   if (upload.status == UPLOAD_FILE_START) {
     Serial.printf("OTA start: %s\n", upload.filename.c_str());
@@ -424,10 +510,15 @@ void handleScan() {
   int n = WiFi.scanNetworks();
   String json = "[";
   for (int i = 0; i < n; i++) {
-    if (i > 0) json += ",";
-    json += "{\"ssid\":\"" + WiFi.SSID(i) + "\","
-            "\"rssi\":" + String(WiFi.RSSI(i)) + ","
-            "\"secure\":" + (WiFi.encryptionType(i) != WIFI_AUTH_OPEN ? "true" : "false") + "}";
+    if (i > 0)
+      json += ",";
+    json += "{\"ssid\":\"" + WiFi.SSID(i) +
+            "\","
+            "\"rssi\":" +
+            String(WiFi.RSSI(i)) +
+            ","
+            "\"secure\":" +
+            (WiFi.encryptionType(i) != WIFI_AUTH_OPEN ? "true" : "false") + "}";
   }
   json += "]";
   WiFi.scanDelete();
@@ -445,9 +536,9 @@ void handleUpdateFinish() {
 }
 
 void registerRoutes() {
-  server.on("/",       handleRoot);
-  server.on("/scan",   HTTP_GET,  handleScan);
-  server.on("/save",   HTTP_POST, handleSave);
+  server.on("/", handleRoot);
+  server.on("/scan", HTTP_GET, handleScan);
+  server.on("/save", HTTP_POST, handleSave);
   server.on("/update", HTTP_POST, handleUpdateFinish, handleUpdate);
   server.onNotFound([]() {
     server.sendHeader("Location", "/");
@@ -462,14 +553,16 @@ bool isStatSelected(int index) {
 int selectedStatsCount() {
   int count = 0;
   for (int i = 0; i < STAT_COUNT; i++) {
-    if (isStatSelected(i)) count++;
+    if (isStatSelected(i))
+      count++;
   }
   return count;
 }
 
 int firstSelectedStatIndex() {
   for (int i = 0; i < STAT_COUNT; i++) {
-    if (isStatSelected(i)) return i;
+    if (isStatSelected(i))
+      return i;
   }
   return STAT_INDEX_SUBSCRIBERS;
 }
@@ -477,7 +570,8 @@ int firstSelectedStatIndex() {
 int nextSelectedStatIndex(int currentIndex) {
   for (int step = 1; step <= STAT_COUNT; step++) {
     int index = (currentIndex + step) % STAT_COUNT;
-    if (isStatSelected(index)) return index;
+    if (isStatSelected(index))
+      return index;
   }
   return firstSelectedStatIndex();
 }
@@ -519,7 +613,8 @@ double getIntervalWeight(int patternIndex) {
 }
 
 void ensureIntervalWeightsInitialized() {
-  if (interval_weights_initialized) return;
+  if (interval_weights_initialized)
+    return;
 
   double rawWeights[INTERVAL_PATTERN_LENGTH];
   double rawWeightTotal = 0;
@@ -530,13 +625,15 @@ void ensureIntervalWeightsInitialized() {
   }
 
   for (int i = 0; i < INTERVAL_PATTERN_LENGTH; i++) {
-    interval_weights[i] = (rawWeights[i] * INTERVAL_PATTERN_LENGTH) / rawWeightTotal;
+    interval_weights[i] =
+        (rawWeights[i] * INTERVAL_PATTERN_LENGTH) / rawWeightTotal;
   }
 
   interval_weights_initialized = true;
 }
 
-uint64_t getJitteredIncrementCount(double elapsedSeconds, double secondsPerIncrement) {
+uint64_t getJitteredIncrementCount(double elapsedSeconds,
+                                   double secondsPerIncrement) {
   ensureIntervalWeightsInitialized();
 
   double cycleSeconds = secondsPerIncrement * INTERVAL_PATTERN_LENGTH;
@@ -558,19 +655,28 @@ uint64_t getJitteredIncrementCount(double elapsedSeconds, double secondsPerIncre
   return incrementCount;
 }
 
-double getProjectedWholeStatValue(double baselineStartedAtUnix, double startingValue, double increasePer28Days, double currentUnixTimestamp) {
-  double elapsedSeconds = max(0.0, currentUnixTimestamp - baselineStartedAtUnix);
+double getProjectedWholeStatValue(double baselineStartedAtUnix,
+                                  double startingValue,
+                                  double increasePer28Days,
+                                  double currentUnixTimestamp) {
+  double elapsedSeconds =
+      max(0.0, currentUnixTimestamp - baselineStartedAtUnix);
   double secondsPerIncrement = SECONDS_PER_28_DAYS / increasePer28Days;
 
   if (!isfinite(secondsPerIncrement) || secondsPerIncrement <= 0) {
     return startingValue;
   }
 
-  return startingValue + getJitteredIncrementCount(elapsedSeconds, secondsPerIncrement);
+  return startingValue +
+         getJitteredIncrementCount(elapsedSeconds, secondsPerIncrement);
 }
 
-double getProjectedFractionalStatValue(double baselineStartedAtUnix, double startingValue, double increasePer28Days, double currentUnixTimestamp) {
-  double elapsedSeconds = max(0.0, currentUnixTimestamp - baselineStartedAtUnix);
+double getProjectedFractionalStatValue(double baselineStartedAtUnix,
+                                       double startingValue,
+                                       double increasePer28Days,
+                                       double currentUnixTimestamp) {
+  double elapsedSeconds =
+      max(0.0, currentUnixTimestamp - baselineStartedAtUnix);
   double increasePerSecond = increasePer28Days / SECONDS_PER_28_DAYS;
 
   if (!isfinite(increasePerSecond) || increasePerSecond <= 0) {
@@ -583,19 +689,13 @@ double getProjectedFractionalStatValue(double baselineStartedAtUnix, double star
 double getProjectedStatValue(int statIndex, double currentUnixTimestamp) {
   if (statIndex == STAT_INDEX_WATCH_HOURS) {
     return getProjectedFractionalStatValue(
-      stat_baseline_started_at_unix,
-      stat_baseline_values[statIndex],
-      stat_increase_per_28_days[statIndex],
-      currentUnixTimestamp
-    );
+        stat_baseline_started_at_unix, stat_baseline_values[statIndex],
+        stat_increase_per_28_days[statIndex], currentUnixTimestamp);
   }
 
   return getProjectedWholeStatValue(
-    stat_baseline_started_at_unix,
-    stat_baseline_values[statIndex],
-    stat_increase_per_28_days[statIndex],
-    currentUnixTimestamp
-  );
+      stat_baseline_started_at_unix, stat_baseline_values[statIndex],
+      stat_increase_per_28_days[statIndex], currentUnixTimestamp);
 }
 
 bool fetchStats() {
@@ -639,7 +739,8 @@ bool fetchStats() {
   JsonObject metrics28Days = doc["metrics28Days"].as<JsonObject>();
   JsonObject adjusted = doc["adjusted"].as<JsonObject>();
   if (baseline.isNull() || metrics28Days.isNull() || adjusted.isNull()) {
-    Serial.println("Stats response missing baseline, metrics28Days, or adjusted.");
+    Serial.println(
+        "Stats response missing baseline, metrics28Days, or adjusted.");
     return false;
   }
 
@@ -654,9 +755,11 @@ bool fetchStats() {
   stat_baseline_values[STAT_INDEX_SUBSCRIBERS] = baseline["subscribers"] | 0.0;
   stat_baseline_values[STAT_INDEX_VIEWS] = baseline["totalViews"] | 0.0;
   stat_baseline_values[STAT_INDEX_WATCH_HOURS] = baseline["watchHours"] | 0.0;
-  stat_increase_per_28_days[STAT_INDEX_SUBSCRIBERS] = metrics28Days["subscribers"] | 0.0;
+  stat_increase_per_28_days[STAT_INDEX_SUBSCRIBERS] =
+      metrics28Days["subscribers"] | 0.0;
   stat_increase_per_28_days[STAT_INDEX_VIEWS] = metrics28Days["views"] | 0.0;
-  stat_increase_per_28_days[STAT_INDEX_WATCH_HOURS] = metrics28Days["watchHours"] | 0.0;
+  stat_increase_per_28_days[STAT_INDEX_WATCH_HOURS] =
+      metrics28Days["watchHours"] | 0.0;
 
   stats_fetched_at = millis();
   statsLoaded = true;
@@ -670,6 +773,63 @@ static char statDisplayBuffer[20];
 static String lastDisplayedValue = "";
 static bool statDisplayScrolling = false;
 
+static bool isDigitChar(char c) { return c >= '0' && c <= '9'; }
+
+static bool shouldRollLastDigit(const String &oldValue,
+                                const String &newValue) {
+  if (oldValue.length() == 0 || oldValue.length() != newValue.length())
+    return false;
+
+  int lastIndex = newValue.length() - 1;
+  return isDigitChar(oldValue[lastIndex]) && isDigitChar(newValue[lastIndex]) &&
+         oldValue[lastIndex] != newValue[lastIndex];
+}
+
+static void drawGlyphWithYOffset(MD_MAX72XX *matrix, uint16_t rightCol, char c,
+                                 int8_t yOffset) {
+  uint8_t glyph[8];
+  uint8_t glyphWidth = matrix->getChar(c, sizeof(glyph), glyph);
+
+  for (uint8_t glyphCol = 0; glyphCol < glyphWidth; glyphCol++) {
+    uint16_t matrixCol = rightCol - glyphCol;
+    for (uint8_t row = 0; row < 8; row++) {
+      int targetRow = (int)row + yOffset;
+      if (targetRow < 0 || targetRow >= 8)
+        continue;
+
+      if ((glyph[glyphCol] & (1 << row)) != 0) {
+        matrix->setPoint((uint8_t)targetRow, matrixCol, true);
+      }
+    }
+  }
+}
+
+static void renderRightAlignedStatFrame(const char *newText, char oldLastDigit,
+                                        int8_t rollOffset) {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+  uint8_t charSpacing = Display.getCharSpacing();
+  uint16_t col = STAT_RIGHT_PADDING_COLUMNS;
+  uint8_t glyph[8];
+  int lastIndex = (int)strlen(newText) - 1;
+
+  matrix->clear();
+
+  for (int i = lastIndex; i >= 0; i--) {
+    uint8_t glyphWidth = matrix->getChar(newText[i], sizeof(glyph), glyph);
+    if (glyphWidth == 0)
+      continue;
+
+    uint16_t rightCol = col + glyphWidth - 1;
+    if (i == lastIndex && rollOffset > 0) {
+      drawGlyphWithYOffset(matrix, rightCol, oldLastDigit, -rollOffset);
+      drawGlyphWithYOffset(matrix, rightCol, newText[i], 8 - rollOffset);
+    } else {
+      matrix->setChar(rightCol, newText[i]);
+    }
+    col += glyphWidth + charSpacing;
+  }
+}
+
 void renderRightAlignedStat(const char *text) {
   MD_MAX72XX *matrix = Display.getGraphicObject();
   uint8_t charSpacing = Display.getCharSpacing();
@@ -681,7 +841,8 @@ void renderRightAlignedStat(const char *text) {
 
   for (int i = (int)strlen(text) - 1; i >= 0; i--) {
     uint8_t glyphWidth = matrix->getChar(text[i], sizeof(glyph), glyph);
-    if (glyphWidth == 0) continue;
+    if (glyphWidth == 0)
+      continue;
 
     matrix->setChar(col + glyphWidth - 1, text[i]);
     col += glyphWidth + charSpacing;
@@ -690,17 +851,58 @@ void renderRightAlignedStat(const char *text) {
   matrix->update(MD_MAX72XX::ON);
 }
 
-void showProjectedStat() {
-  if (!statsLoaded) return;
+void renderRightAlignedStatRollingLastDigit(const char *oldText,
+                                            const char *newText) {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+  char oldLastDigit = oldText[strlen(oldText) - 1];
+
+  matrix->update(MD_MAX72XX::OFF);
+  for (int8_t offset = 1; offset <= 8; offset++) {
+    renderRightAlignedStatFrame(newText, oldLastDigit, offset);
+    matrix->update();
+    delay(DIGIT_ROLL_FRAME_DELAY_MS);
+  }
+  matrix->update(MD_MAX72XX::ON);
+}
+
+void showStatLabel() {
+  if (selectedStatsCount() <= 1)
+    return;
 
   ensureCurrentStatSelected();
-  double currentUnixTimestamp = stats_as_of_unix + ((millis() - stats_fetched_at) / 1000.0);
-  double projected = getProjectedStatValue(current_stat_index, currentUnixTimestamp);
+  statDisplayScrolling = false;
+  lastDisplayedValue = "";
+  renderRightAlignedStat(STAT_LABELS[current_stat_index]);
+  Serial.println(STAT_LABELS[current_stat_index]);
+}
+
+void startStatDisplay() {
+  if (selectedStatsCount() > 1) {
+    showing_stat_label = true;
+    showStatLabel();
+  } else {
+    showing_stat_label = false;
+    lastDisplayedValue = "";
+    showProjectedStat();
+  }
+}
+
+void showProjectedStat() {
+  if (!statsLoaded)
+    return;
+
+  ensureCurrentStatSelected();
+  double currentUnixTimestamp =
+      stats_as_of_unix + ((millis() - stats_fetched_at) / 1000.0);
+  double projected =
+      getProjectedStatValue(current_stat_index, currentUnixTimestamp);
 
   String formatted = stat_format(projected, current_stat_index);
-  if (formatted == lastDisplayedValue) return;
-  lastDisplayedValue = formatted;
+  if (formatted == lastDisplayedValue)
+    return;
 
+  String previousDisplayedValue = lastDisplayedValue;
+  bool wasDisplayScrolling = statDisplayScrolling;
   formatted.toCharArray(statDisplayBuffer, sizeof(statDisplayBuffer));
   Serial.println(formatted);
 
@@ -711,11 +913,18 @@ void showProjectedStat() {
 
   if (textWidth + STAT_RIGHT_PADDING_COLUMNS <= displayWidth) {
     statDisplayScrolling = false;
-    renderRightAlignedStat(statDisplayBuffer);
+    if (!wasDisplayScrolling &&
+        shouldRollLastDigit(previousDisplayedValue, formatted)) {
+      renderRightAlignedStatRollingLastDigit(previousDisplayedValue.c_str(),
+                                             statDisplayBuffer);
+    } else {
+      renderRightAlignedStat(statDisplayBuffer);
+    }
   } else {
     statDisplayScrolling = true;
     Display.displayScroll(statDisplayBuffer, PA_RIGHT, PA_SCROLL_LEFT, 80);
   }
+  lastDisplayedValue = formatted;
 }
 
 bool startWokwiConfigPortal() {
@@ -726,7 +935,8 @@ bool startWokwiConfigPortal() {
   WiFi.begin(WOKWI_GUEST_SSID);
 
   unsigned long start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < WOKWI_SETUP_TIMEOUT_MS) {
+  while (WiFi.status() != WL_CONNECTED &&
+         millis() - start < WOKWI_SETUP_TIMEOUT_MS) {
     delay(250);
   }
 
@@ -773,7 +983,8 @@ static void bootShowCenteredText(const char *text, uint16_t holdMs) {
   matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
 }
 
-static void bootAnimRain(MD_MAX72XX *matrix, uint16_t colStart, uint16_t colEnd, int width, int height) {
+static void bootAnimRain(MD_MAX72XX *matrix, uint16_t colStart, uint16_t colEnd,
+                         int width, int height) {
   auto drawPixel = [matrix](uint16_t col, uint8_t row, bool on) {
     matrix->setPoint(row, col, on);
   };
@@ -805,7 +1016,8 @@ static void bootAnimRain(MD_MAX72XX *matrix, uint16_t colStart, uint16_t colEnd,
   }
 }
 
-static void bootAnimPlasma(MD_MAX72XX *matrix, uint16_t colStart, int width, int height) {
+static void bootAnimPlasma(MD_MAX72XX *matrix, uint16_t colStart, int width,
+                           int height) {
   auto drawPixel = [matrix](uint16_t col, uint8_t row, bool on) {
     matrix->setPoint(row, col, on);
   };
@@ -821,10 +1033,9 @@ static void bootAnimPlasma(MD_MAX72XX *matrix, uint16_t colStart, int width, int
       for (int row = 0; row < height; row++) {
         float cy = row - height * 0.5f;
         float dist = sqrtf(cx * cx + cy * cy);
-        float v = sinf(c * 0.38f + t)
-                + sinf(row * 0.62f - t * 1.35f)
-                + sinf(dist * 0.48f - t * 1.8f)
-                + sinf((c + row) * 0.28f + t * 0.55f);
+        float v = sinf(c * 0.38f + t) + sinf(row * 0.62f - t * 1.35f) +
+                  sinf(dist * 0.48f - t * 1.8f) +
+                  sinf((c + row) * 0.28f + t * 0.55f);
         if (v > threshold) {
           drawPixel(col, row, true);
         }
@@ -836,7 +1047,8 @@ static void bootAnimPlasma(MD_MAX72XX *matrix, uint16_t colStart, int width, int
   }
 }
 
-static void bootAnimSpectrum(MD_MAX72XX *matrix, uint16_t colStart, int width, int height) {
+static void bootAnimSpectrum(MD_MAX72XX *matrix, uint16_t colStart, int width,
+                             int height) {
   auto drawPixel = [matrix](uint16_t col, uint8_t row, bool on) {
     matrix->setPoint(row, col, on);
   };
@@ -869,7 +1081,8 @@ static void bootAnimSpectrum(MD_MAX72XX *matrix, uint16_t colStart, int width, i
   }
 }
 
-static void bootAnimFinale(MD_MAX72XX *matrix, uint16_t colStart, uint16_t colEnd, int width, int height) {
+static void bootAnimFinale(MD_MAX72XX *matrix, uint16_t colStart,
+                           uint16_t colEnd, int width, int height) {
   auto drawPixel = [matrix](uint16_t col, uint8_t row, bool on) {
     matrix->setPoint(row, col, on);
   };
@@ -948,7 +1161,8 @@ void runBootAnimation() {
 
 void initSetupDisplay() {
   getSetupMacSuffix(setupMacSuffix, sizeof(setupMacSuffix));
-  snprintf(setupScrollBuffer, sizeof(setupScrollBuffer), "Connect to hotspot %s%s", AP_SSID_PREFIX, setupMacSuffix);
+  snprintf(setupScrollBuffer, sizeof(setupScrollBuffer),
+           "Connect to hotspot %s%s", AP_SSID_PREFIX, setupMacSuffix);
   Display.displayScroll(setupScrollBuffer, PA_LEFT, PA_SCROLL_LEFT, 80);
 }
 
@@ -994,9 +1208,9 @@ void setup() {
 
   loadPrefs();
 
-  bool hasCredentials = (saved_ssid.length() > 0 &&
-                         saved_endpoint.length() > 0 &&
-                         (saved_stats & STAT_ALL) != 0);
+  bool hasCredentials =
+      (saved_ssid.length() > 0 && saved_endpoint.length() > 0 &&
+       (saved_stats & STAT_ALL) != 0);
 
   if (hasCredentials) {
     Display.print(" WiFi...");
@@ -1007,7 +1221,8 @@ void setup() {
     WiFi.begin(saved_ssid.c_str(), saved_pass.c_str());
 
     unsigned long start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_TIMEOUT_MS) {
+    while (WiFi.status() != WL_CONNECTED &&
+           millis() - start < WIFI_TIMEOUT_MS) {
       Serial.print(".");
       delay(500);
     }
@@ -1020,7 +1235,9 @@ void setup() {
       // Scroll IP across matrix then pause on last frame for 2 seconds
       String ip = WiFi.localIP().toString();
       Display.displayScroll(ip.c_str(), PA_LEFT, PA_SCROLL_LEFT, 80);
-      while (!Display.displayAnimate()) { delay(10); }
+      while (!Display.displayAnimate()) {
+        delay(10);
+      }
       delay(2000);
 
       registerRoutes();
@@ -1033,13 +1250,13 @@ void setup() {
       client.setInsecure();
     } else {
       Serial.println("WiFi failed. Starting config portal.");
-      if (!startWokwiConfigPortal()) {
+      if (!ENABLE_WOKWI_SETUP || !startWokwiConfigPortal()) {
         startConfigPortal();
       }
     }
   } else {
     Serial.println("No credentials. Starting config portal.");
-    if (!startWokwiConfigPortal()) {
+    if (!ENABLE_WOKWI_SETUP || !startWokwiConfigPortal()) {
       startConfigPortal();
     }
   }
@@ -1060,11 +1277,13 @@ void loop() {
 
   if (WiFi.status() == WL_CONNECTED) {
     unsigned long now = millis();
-    unsigned long refreshInterval = (unsigned long)saved_refresh_minutes * 60000UL;
+    unsigned long refreshInterval =
+        (unsigned long)saved_refresh_minutes * 60000UL;
 
-    if (!statsLoaded || api_lasttime == 0 || now - api_lasttime >= refreshInterval) {
+    if (!statsLoaded || api_lasttime == 0 ||
+        now - api_lasttime >= refreshInterval) {
       if (fetchStats()) {
-        showProjectedStat();
+        startStatDisplay();
         display_lasttime = now;
         cycle_lasttime = now;
       } else if (!statsLoaded) {
@@ -1073,20 +1292,40 @@ void loop() {
       api_lasttime = now;
     }
 
-    if (statsLoaded && statDisplayScrolling) {
+    if (statsLoaded && statDisplayScrolling && !showing_stat_label) {
       Display.displayAnimate();
     }
 
     if (statsLoaded) {
-      if (selectedStatsCount() > 1 && now - cycle_lasttime >= STAT_CYCLE_MS) {
-        current_stat_index = nextSelectedStatIndex(current_stat_index);
-        lastDisplayedValue = "";
-        showProjectedStat();
-        display_lasttime = now;
-        cycle_lasttime = now;
-      } else if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
-        showProjectedStat();
-        display_lasttime = now;
+      if (selectedStatsCount() > 1) {
+        unsigned long phaseMs =
+            showing_stat_label
+                ? (unsigned long)saved_label_cycle_seconds * 1000UL
+                : (unsigned long)saved_stat_cycle_seconds * 1000UL;
+
+        if (now - cycle_lasttime >= phaseMs) {
+          if (showing_stat_label) {
+            showing_stat_label = false;
+            lastDisplayedValue = "";
+            showProjectedStat();
+          } else {
+            current_stat_index = nextSelectedStatIndex(current_stat_index);
+            showing_stat_label = true;
+            showStatLabel();
+          }
+          cycle_lasttime = now;
+          display_lasttime = now;
+        } else if (!showing_stat_label &&
+                   now - display_lasttime >= DISPLAY_UPDATE_MS) {
+          showProjectedStat();
+          display_lasttime = now;
+        }
+      } else {
+        showing_stat_label = false;
+        if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
+          showProjectedStat();
+          display_lasttime = now;
+        }
       }
     }
   }
@@ -1095,7 +1334,11 @@ void loop() {
 String stat_format(double value, int statIndex) {
   if (statIndex == STAT_INDEX_WATCH_HOURS) {
     char buf[20];
-    snprintf(buf, sizeof(buf), "%.1f", value);
+    if (value >= 1000000.0) {
+      snprintf(buf, sizeof(buf), "%.0f", value);
+    } else {
+      snprintf(buf, sizeof(buf), "%.1f", value);
+    }
     return String(buf);
   }
   return String((long)(value + 0.5));
