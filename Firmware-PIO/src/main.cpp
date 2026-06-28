@@ -29,7 +29,7 @@
 #define WIFI_TIMEOUT_MS 15000
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
-const bool ENABLE_WOKWI_SETUP = false;
+const bool ENABLE_WOKWI_SETUP = true;
 const bool DISABLE_INTRO_AND_WIFI_INFO = false;
 
 // Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true to preview
@@ -1699,10 +1699,13 @@ void loop() {
 
     if (!statsLoaded || api_lasttime == 0 ||
         now - api_lasttime >= refreshInterval) {
+      bool hadStats = statsLoaded;
       if (fetchStats()) {
-        startStatDisplay();
-        display_lasttime = now;
-        cycle_lasttime = now;
+        if (!hadStats) {
+          startStatDisplay();
+          display_lasttime = now;
+          cycle_lasttime = now;
+        }
       } else if (!statsLoaded) {
         Display.print("API err");
       }
