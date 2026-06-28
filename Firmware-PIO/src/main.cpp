@@ -1027,8 +1027,7 @@ static void captureStatExitFrame() {
   if (statDisplayScrolling) {
     for (uint8_t row = 0; row < 8; row++) {
       for (uint16_t col = statExitColStart; col <= statExitColEnd; col++) {
-        statExitFrame[row][col - statExitColStart] =
-            matrix->getPoint(row, col);
+        statExitFrame[row][col - statExitColStart] = matrix->getPoint(row, col);
       }
     }
     return;
@@ -1662,7 +1661,7 @@ void setup() {
       server.begin();
 
       Display.displayClear();
-      Display.print("Get data...");
+      Display.print("Get Data");
       delay(250);
 
       client.setInsecure();
