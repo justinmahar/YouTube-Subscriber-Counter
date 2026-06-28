@@ -52,7 +52,7 @@ const float DEFAULT_STAT_CYCLE_SECONDS = 5.0f;
 const unsigned int DEFAULT_SCROLL_SPEED_MS = 80;
 const uint8_t STAT_RIGHT_PADDING_COLUMNS = 1;
 const int16_t STAT_SCROLL_OFFSCREEN_MARGIN = 2;
-const char STAT_LABEL_NUMBER_GAP[] = "  ";
+const int16_t STAT_LABEL_NUMBER_GAP_COLUMNS = 6;
 const uint8_t DIGIT_ROLL_FRAME_DELAY_MS = 28;
 const unsigned int DEFAULT_REFRESH_MINUTES = 5;
 const unsigned int MAX_REFRESH_MINUTES = 1440;
@@ -781,7 +781,6 @@ static StatScrollPhase statScrollPhase = SCROLL_NONE;
 static int16_t statScrollStep = 0;
 static int16_t statScrollLabelWidth = 0;
 static int16_t statScrollNumberWidth = 0;
-static int16_t statScrollLabelGapCols = 0;
 static int16_t statScrollInStartCol = 0;
 static int16_t statScrollInSteps = 0;
 static int16_t statScrollLabelOutSteps = 0;
@@ -989,13 +988,16 @@ static void renderStatScrollFrame() {
   matrix->clear();
 
   if (statScrollPhase == SCROLL_IN) {
-    int16_t firstCol = statScrollInStartCol + statScrollStep;
-    renderTextAnchored(statCombinedBuffer, firstCol);
+    int16_t numberFirstCol = statScrollInStartCol + statScrollStep;
+    int16_t labelFirstCol = numberFirstCol + statScrollNumberWidth +
+                             STAT_LABEL_NUMBER_GAP_COLUMNS;
+    renderTextAnchored(statDisplayBuffer, numberFirstCol);
+    renderTextAnchored(STAT_LABELS[current_stat_index], labelFirstCol);
   } else if (statScrollPhase == SCROLL_LABEL_OUT) {
     renderTextAnchored(statDisplayBuffer, STAT_RIGHT_PADDING_COLUMNS);
     int16_t labelFirstCol = (int16_t)STAT_RIGHT_PADDING_COLUMNS +
-                            statScrollNumberWidth + statScrollLabelGapCols +
-                            statScrollStep;
+                            statScrollNumberWidth +
+                            STAT_LABEL_NUMBER_GAP_COLUMNS + statScrollStep;
     renderTextAnchored(STAT_LABELS[current_stat_index], labelFirstCol);
   }
 
@@ -1047,14 +1049,15 @@ void startStatScrollIn() {
     return;
   }
 
-  snprintf(statCombinedBuffer, sizeof(statCombinedBuffer), "%s%s%s",
-           STAT_LABELS[current_stat_index], STAT_LABEL_NUMBER_GAP,
+  snprintf(statCombinedBuffer, sizeof(statCombinedBuffer), "%s %s",
+           STAT_LABELS[current_stat_index],
            statDisplayBuffer);
 
   statScrollLabelWidth =
       Display.getTextColumns(STAT_LABELS[current_stat_index]);
-  statScrollLabelGapCols = Display.getTextColumns(STAT_LABEL_NUMBER_GAP);
-  uint16_t combinedWidth = Display.getTextColumns(statCombinedBuffer);
+  int16_t combinedWidth = statScrollNumberWidth +
+                          STAT_LABEL_NUMBER_GAP_COLUMNS +
+                          statScrollLabelWidth;
   statScrollInStartCol = -(int16_t)combinedWidth - STAT_SCROLL_OFFSCREEN_MARGIN;
   statScrollInSteps =
       (int16_t)STAT_RIGHT_PADDING_COLUMNS - statScrollInStartCol;
