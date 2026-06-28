@@ -240,6 +240,44 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
   </div>
 </div>
 <script>
+var SETUP_STORAGE_KEY='statsCounterSetup';
+function persistSetupForm(){
+  try{
+    localStorage.setItem(SETUP_STORAGE_KEY,JSON.stringify({
+      ssid:document.getElementById('ssid').value,
+      endpoint:document.getElementById('endpoint').value,
+      statSubs:document.getElementById('stat-subs').checked,
+      statViews:document.getElementById('stat-views').checked,
+      statHours:document.getElementById('stat-hours').checked,
+      scrollSpeed:document.getElementById('scroll-speed').value,
+      statCycle:document.getElementById('stat-cycle').value,
+      refresh:document.getElementById('refresh').value
+    }));
+  }catch(e){}
+}
+function restoreSetupForm(){
+  try{
+    var raw=localStorage.getItem(SETUP_STORAGE_KEY);
+    if(!raw)return;
+    var d=JSON.parse(raw);
+    if(d.ssid!=null)document.getElementById('ssid').value=d.ssid;
+    if(d.endpoint!=null)document.getElementById('endpoint').value=d.endpoint;
+    if(d.statSubs!=null)document.getElementById('stat-subs').checked=!!d.statSubs;
+    if(d.statViews!=null)document.getElementById('stat-views').checked=!!d.statViews;
+    if(d.statHours!=null)document.getElementById('stat-hours').checked=!!d.statHours;
+    if(d.scrollSpeed!=null)document.getElementById('scroll-speed').value=d.scrollSpeed;
+    if(d.statCycle!=null)document.getElementById('stat-cycle').value=d.statCycle;
+    if(d.refresh!=null)document.getElementById('refresh').value=d.refresh;
+  }catch(e){}
+}
+function bindSetupPersist(){
+  ['ssid','endpoint','scroll-speed','stat-cycle','refresh'].forEach(function(id){
+    document.getElementById(id).addEventListener('input',persistSetupForm);
+  });
+  ['stat-subs','stat-views','stat-hours'].forEach(function(id){
+    document.getElementById(id).addEventListener('change',persistSetupForm);
+  });
+}
 function barsHtml(rssi){
   var lvl=rssi>-55?4:rssi>-65?3:rssi>-75?2:1;
   var h='<div class="net-bars">';
@@ -274,6 +312,7 @@ function pickNet(el,ssid){
   document.querySelectorAll('.net-item').forEach(function(x){x.classList.remove('active');});
   el.classList.add('active');
   document.getElementById('ssid').value=ssid;
+  persistSetupForm();
   document.getElementById('pw').focus();
 }
 function toggleEye(inputId,iconId){
@@ -300,6 +339,7 @@ function save(){
   if(!scrollSpeed||scrollSpeed<=0){msg.className='msg err';msg.textContent='Scroll speed must be greater than 0.';return;}
   if(!statCycle||statCycle<=0){msg.className='msg err';msg.textContent='Value display time must be greater than 0.';return;}
   if(!r||r<1){msg.className='msg err';msg.textContent='Refresh rate must be at least 1 minute.';return;}
+  persistSetupForm();
   msg.className='msg ok';msg.textContent='Saving\u2026 device will reboot and connect.';
   fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r+'&scrollSpeed='+scrollSpeed+'&statCycle='+statCycle})
@@ -338,6 +378,8 @@ function uploadFirmware(){
   fd.append('firmware',file,file.name);
   xhr.send(fd);
 }
+restoreSetupForm();
+bindSetupPersist();
 </script>
 </body></html>
 )rawhtml";
