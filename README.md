@@ -66,9 +66,9 @@ Tier 1 fires on every 100; higher tiers fire on their own boundaries (e.g. 1,000
 | 11 | Views       | 5    | 1M        | Done (crowd eyes → giant stare + deluge) |
 | 12 | Views       | 6    | 10M       | Done (gravity well + nova grid + plasma) |
 | 13 | Views       | 7    | 100M      | Done (twin singularity + omniscience + hypernova) |
-| 14 | Watch hours | 1    | 100       | Done (hourglass + falling sand) |
-| 15 | Watch hours | 2    | 1K        | Planned |
-| 16 | Watch hours | 3    | 10K       | Planned |
+| 14 | Watch hours | 1    | 100       | Done (hourglass drains top → bottom) |
+| 15 | Watch hours | 2    | 1K        | Done (sand stream + tick sweep + ripple) |
+| 16 | Watch hours | 3    | 10K       | Done (dual hourglasses + chrono fireworks) |
 | 17 | Watch hours | 4    | 100K      | Planned |
 | 18 | Watch hours | 5    | 1M        | Planned |
 | 19 | Watch hours | 6    | 10M       | Planned |

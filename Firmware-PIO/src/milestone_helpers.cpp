@@ -137,20 +137,19 @@ void milestoneAnimSparkRain(MilestoneCtx &ctx, int frames,
 void milestoneAnimDualComets(MilestoneCtx &ctx, int passes,
                              uint16_t frameDelayMs) {
   for (int pass = 0; pass < passes; pass++) {
-    for (int head = -4; head <= ctx.width + 4; head++) {
+    for (int head = -3; head <= ctx.width + 3; head++) {
       milestoneClear(ctx);
       for (int comet = 0; comet < 2; comet++) {
         int cometHead = comet == 0 ? head : ctx.width - 1 - head + pass;
-        for (int t = 0; t < 5; t++) {
+        for (int t = 0; t < 4; t++) {
           int c = cometHead - t;
           if (c < 0 || c >= ctx.width) {
             continue;
           }
-          for (int row = 1; row < ctx.height - 1; row++) {
-            ctx.matrix->setPoint(row, ctx.colStart + c, t < 2);
+          ctx.matrix->setPoint(ctx.cy, ctx.colStart + c, t <= 1);
+          if (t == 0 && ctx.cy > 0) {
+            ctx.matrix->setPoint(ctx.cy - 1, ctx.colStart + c, true);
           }
-          ctx.matrix->setPoint(3, ctx.colStart + c, t < 3);
-          ctx.matrix->setPoint(4, ctx.colStart + c, t < 3);
         }
       }
       milestoneFrameShow(ctx, frameDelayMs, min(15, 10 + pass * 2));
@@ -238,22 +237,22 @@ void milestoneAnimChainExplosions(MilestoneCtx &ctx, const int *originX,
   }
 }
 
-void milestoneAnimRippleBars(MilestoneCtx &ctx, int frames,
-                             uint16_t frameDelayMs) {
-  for (int frame = 0; frame < frames; frame++) {
-    milestoneClear(ctx);
-    for (int c = 0; c < ctx.width; c++) {
-      int dist = abs(c - ctx.cx);
-      int phase = frame - dist;
-      if (phase >= 0 && phase < 8) {
-        int barH = phase < 4 ? phase + 2 : 9 - phase;
-        barH = constrain(barH, 1, ctx.height);
-        for (int row = ctx.height - barH; row < ctx.height; row++) {
-          ctx.matrix->setPoint(row, ctx.colStart + c, true);
-        }
+static void milestoneDrawExpandingRipple(MilestoneCtx &ctx, int radius) {
+  for (int c = 0; c < ctx.width; c++) {
+    for (int row = 0; row < ctx.height; row++) {
+      if (abs(c - ctx.cx) + abs(row - ctx.cy) == radius) {
+        ctx.matrix->setPoint(row, ctx.colStart + c, true);
       }
     }
-    milestoneFrameShow(ctx, frameDelayMs, 13);
+  }
+}
+
+void milestoneAnimRippleBars(MilestoneCtx &ctx, int frames,
+                             uint16_t frameDelayMs) {
+  for (int ring = 0; ring < frames; ring++) {
+    milestoneClear(ctx);
+    milestoneDrawExpandingRipple(ctx, ring);
+    milestoneFrameShow(ctx, frameDelayMs, min(15, 6 + ring / 3));
   }
 }
 
@@ -275,22 +274,14 @@ void milestoneAnimDoubleDiamondPulse(MilestoneCtx &ctx, uint16_t frameDelayMs) {
 void milestoneAnimTripleTsunami(MilestoneCtx &ctx, int framesPerWave,
                                 uint16_t frameDelayMs, uint16_t wavePauseMs) {
   for (int wave = 0; wave < 3; wave++) {
-    for (int frame = 0; frame < framesPerWave; frame++) {
+    for (int ring = 0; ring < framesPerWave; ring++) {
       milestoneClear(ctx);
-      for (int c = 0; c < ctx.width; c++) {
-        int dist = abs(c - ctx.cx);
-        int phase = frame - dist + wave * 2;
-        if (phase >= 0 && phase < 9) {
-          int barH = phase < 5 ? phase + 1 : 10 - phase;
-          barH = constrain(barH, 1, ctx.height);
-          for (int row = ctx.height - barH; row < ctx.height; row++) {
-            ctx.matrix->setPoint(row, ctx.colStart + c, true);
-          }
-        }
-      }
-      milestoneFrameShow(ctx, frameDelayMs, min(15, 8 + wave * 2 + frame / 5));
+      milestoneDrawExpandingRipple(ctx, ring);
+      milestoneFrameShow(ctx, frameDelayMs, min(15, 8 + wave * 2 + ring / 4));
     }
-    delay(wavePauseMs);
+    if (wave < 2) {
+      delay(wavePauseMs);
+    }
   }
 }
 
