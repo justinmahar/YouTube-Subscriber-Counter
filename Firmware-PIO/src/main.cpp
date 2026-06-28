@@ -76,6 +76,7 @@ char setupScrollBuffer[48] = "";
 
 String stat_format(double value, int statIndex);
 String getSetupApSsid();
+void runBootAnimation();
 void initSetupDisplay();
 void updateSetupDisplay();
 String html_escape(String value);
@@ -759,6 +760,192 @@ String getSetupApSsid() {
   return String(AP_SSID_PREFIX) + suffix;
 }
 
+static void bootShowCenteredText(const char *text, uint16_t holdMs) {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+  matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
+  matrix->clear();
+  matrix->update();
+  Display.displayClear();
+  Display.setTextAlignment(PA_CENTER);
+  Display.setIntensity(12);
+  Display.print(text);
+  delay(holdMs);
+  matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
+}
+
+static void bootAnimRain(MD_MAX72XX *matrix, uint16_t colStart, uint16_t colEnd, int width, int height) {
+  auto drawPixel = [matrix](uint16_t col, uint8_t row, bool on) {
+    matrix->setPoint(row, col, on);
+  };
+
+  uint8_t dropHead[32];
+  uint8_t dropSpeed[32];
+  for (int c = 0; c < width; c++) {
+    dropHead[c] = random(height + 4);
+    dropSpeed[c] = 1 + random(3);
+  }
+
+  for (int frame = 0; frame < 42; frame++) {
+    matrix->clear();
+    for (int c = 0; c < width; c++) {
+      int col = colStart + c;
+      if (frame % dropSpeed[c] == c % dropSpeed[c]) {
+        dropHead[c] = (dropHead[c] + 1) % (height + 6);
+      }
+      for (int trail = 0; trail < 6; trail++) {
+        int row = (int)dropHead[c] - trail;
+        if (row >= 0 && row < height) {
+          drawPixel(col, row, trail < 2);
+        }
+      }
+    }
+    Display.setIntensity(min(15, 1 + frame / 3));
+    matrix->update();
+    delay(26);
+  }
+}
+
+static void bootAnimPlasma(MD_MAX72XX *matrix, uint16_t colStart, int width, int height) {
+  auto drawPixel = [matrix](uint16_t col, uint8_t row, bool on) {
+    matrix->setPoint(row, col, on);
+  };
+
+  for (int frame = 0; frame < 48; frame++) {
+    matrix->clear();
+    float t = frame * 0.21f;
+    float threshold = -0.35f + (frame / 48.0f) * 0.25f;
+
+    for (int c = 0; c < width; c++) {
+      int col = colStart + c;
+      float cx = c - width * 0.5f;
+      for (int row = 0; row < height; row++) {
+        float cy = row - height * 0.5f;
+        float dist = sqrtf(cx * cx + cy * cy);
+        float v = sinf(c * 0.38f + t)
+                + sinf(row * 0.62f - t * 1.35f)
+                + sinf(dist * 0.48f - t * 1.8f)
+                + sinf((c + row) * 0.28f + t * 0.55f);
+        if (v > threshold) {
+          drawPixel(col, row, true);
+        }
+      }
+    }
+    Display.setIntensity(min(15, 4 + frame / 4));
+    matrix->update();
+    delay(28);
+  }
+}
+
+static void bootAnimSpectrum(MD_MAX72XX *matrix, uint16_t colStart, int width, int height) {
+  auto drawPixel = [matrix](uint16_t col, uint8_t row, bool on) {
+    matrix->setPoint(row, col, on);
+  };
+
+  uint8_t barHeight[32];
+  int8_t barDelta[32];
+  for (int c = 0; c < width; c++) {
+    barHeight[c] = 1 + random(height);
+    barDelta[c] = random(2) ? 1 : -1;
+  }
+
+  for (int frame = 0; frame < 38; frame++) {
+    matrix->clear();
+    for (int c = 0; c < width; c++) {
+      int col = colStart + c;
+      if (frame % 2 == c % 2) {
+        barHeight[c] += barDelta[c];
+        if (barHeight[c] >= height || barHeight[c] <= 1) {
+          barDelta[c] = -barDelta[c];
+          barHeight[c] = constrain(barHeight[c], 1, height);
+        }
+      }
+      for (int row = height - barHeight[c]; row < height; row++) {
+        drawPixel(col, row, true);
+      }
+    }
+    Display.setIntensity(13);
+    matrix->update();
+    delay(32);
+  }
+}
+
+static void bootAnimFinale(MD_MAX72XX *matrix, uint16_t colStart, uint16_t colEnd, int width, int height) {
+  auto drawPixel = [matrix](uint16_t col, uint8_t row, bool on) {
+    matrix->setPoint(row, col, on);
+  };
+
+  for (int sweep = -2; sweep <= width + 3; sweep++) {
+    matrix->clear();
+    for (int row = 0; row < height; row++) {
+      for (int c = 0; c < width; c++) {
+        int col = colStart + c;
+        bool bg = ((c + row * 2 + sweep) % 5) < 2;
+        drawPixel(col, row, bg);
+      }
+    }
+    for (int echo = 0; echo < 5; echo++) {
+      int sweepCol = colStart + sweep - echo;
+      if (sweepCol >= colStart && sweepCol <= colEnd) {
+        for (int row = 0; row < height; row++) {
+          drawPixel(sweepCol, row, echo < 2);
+        }
+      }
+    }
+    Display.setIntensity(max(3, 14 - abs(sweep - width / 2) / 3));
+    matrix->update();
+    delay(20);
+  }
+
+  for (int col = colStart; col <= colEnd; col++) {
+    for (int row = 0; row < height; row++) {
+      drawPixel(col, row, true);
+    }
+  }
+  matrix->update();
+  Display.setIntensity(15);
+  delay(45);
+
+  for (int frame = 0; frame < 18; frame++) {
+    for (int col = colStart; col <= colEnd; col++) {
+      for (int row = 0; row < height; row++) {
+        if (random(100) < frame * 7) {
+          drawPixel(col, row, false);
+        }
+      }
+    }
+    matrix->update();
+    Display.setIntensity(max(0, 14 - frame));
+    delay(22);
+  }
+}
+
+void runBootAnimation() {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+  uint16_t colStart, colEnd;
+  Display.getDisplayExtent(colStart, colEnd);
+  const int width = colEnd - colStart + 1;
+  const int height = 8;
+
+  matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
+
+  bootAnimRain(matrix, colStart, colEnd, width, height);
+  bootShowCenteredText("YOUTUBE", 1100);
+
+  bootAnimPlasma(matrix, colStart, width, height);
+  bootShowCenteredText("STATS", 1100);
+
+  bootAnimSpectrum(matrix, colStart, width, height);
+  bootShowCenteredText("COUNTER!", 1100);
+
+  bootAnimFinale(matrix, colStart, colEnd, width, height);
+
+  matrix->clear();
+  matrix->update();
+  matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
+  Display.setIntensity(0);
+  Display.displayClear();
+}
+
 void initSetupDisplay() {
   getSetupMacSuffix(setupMacSuffix, sizeof(setupMacSuffix));
   snprintf(setupScrollBuffer, sizeof(setupScrollBuffer), "Connect to hotspot %s%s", AP_SSID_PREFIX, setupMacSuffix);
@@ -801,6 +988,9 @@ void setup() {
   Display.setIntensity(0);
   Display.setFont(fontSubs);
   Display.setTextAlignment(PA_CENTER);
+
+  randomSeed(esp_random());
+  runBootAnimation();
 
   loadPrefs();
 
