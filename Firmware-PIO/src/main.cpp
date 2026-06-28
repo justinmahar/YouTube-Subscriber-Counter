@@ -47,10 +47,8 @@ DNSServer dnsServer;
 Preferences prefs;
 
 const unsigned long DISPLAY_UPDATE_MS = 1000;
-const unsigned int DEFAULT_STAT_CYCLE_SECONDS = 5;
-const unsigned int DEFAULT_LABEL_CYCLE_SECONDS = 2;
-const unsigned int MIN_CYCLE_SECONDS = 1;
-const unsigned int MAX_CYCLE_SECONDS = 120;
+const float DEFAULT_STAT_CYCLE_SECONDS = 5.0f;
+const float DEFAULT_LABEL_CYCLE_SECONDS = 2.0f;
 const uint8_t STAT_RIGHT_PADDING_COLUMNS = 1;
 const uint8_t DIGIT_ROLL_FRAME_DELAY_MS = 28;
 const unsigned int DEFAULT_REFRESH_MINUTES = 5;
@@ -88,8 +86,8 @@ StaticJsonDocument<1536> doc;
 String saved_ssid, saved_pass, saved_endpoint;
 uint8_t saved_stats = STAT_SUBSCRIBERS;
 unsigned int saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
-unsigned int saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
-unsigned int saved_label_cycle_seconds = DEFAULT_LABEL_CYCLE_SECONDS;
+float saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
+float saved_label_cycle_seconds = DEFAULT_LABEL_CYCLE_SECONDS;
 bool configMode = false;
 bool captivePortalActive = false;
 char setupMacSuffix[5] = "";
@@ -209,12 +207,12 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
     </div>
     <div>
       <label>Label display time (seconds)</label>
-      <input type="number" id="label-cycle" min="1" max="120" step="1" value="LABEL_CYCLE_PLACEHOLDER">
-      <div class="hint">How long each stat label (e.g. Subs:) is shown when cycling. Must be shorter than the value time below.</div>
+      <input type="number" id="label-cycle" step="any" value="LABEL_CYCLE_PLACEHOLDER">
+      <div class="hint">How long each stat label (e.g. Subs:) is shown when cycling.</div>
     </div>
     <div>
       <label>Value display time (seconds)</label>
-      <input type="number" id="stat-cycle" min="1" max="120" step="1" value="STAT_CYCLE_PLACEHOLDER">
+      <input type="number" id="stat-cycle" step="any" value="STAT_CYCLE_PLACEHOLDER">
       <div class="hint">How long each projected number is shown when cycling multiple stats.</div>
     </div>
     <div>
@@ -284,8 +282,8 @@ function save(){
   var p=document.getElementById('pw').value;
   var e=document.getElementById('endpoint').value.trim();
   var r=parseInt(document.getElementById('refresh').value,10);
-  var labelCycle=parseInt(document.getElementById('label-cycle').value,10);
-  var statCycle=parseInt(document.getElementById('stat-cycle').value,10);
+  var labelCycle=parseFloat(document.getElementById('label-cycle').value);
+  var statCycle=parseFloat(document.getElementById('stat-cycle').value);
   var stats=0;
   if(document.getElementById('stat-subs').checked)stats|=1;
   if(document.getElementById('stat-views').checked)stats|=2;
@@ -294,9 +292,8 @@ function save(){
   if(!e){msg.className='msg err';msg.textContent='Stats API endpoint is required.';return;}
   if(!/^https?:\/\//i.test(e)){msg.className='msg err';msg.textContent='Endpoint must start with http:// or https://';return;}
   if(!stats){msg.className='msg err';msg.textContent='Choose at least one stat to show.';return;}
-  if(!labelCycle||labelCycle<1){msg.className='msg err';msg.textContent='Label display time must be at least 1 second.';return;}
-  if(!statCycle||statCycle<1){msg.className='msg err';msg.textContent='Value display time must be at least 1 second.';return;}
-  if(labelCycle>=statCycle){msg.className='msg err';msg.textContent='Label display time must be shorter than value display time.';return;}
+  if(!labelCycle||labelCycle<=0){msg.className='msg err';msg.textContent='Label display time must be greater than 0.';return;}
+  if(!statCycle||statCycle<=0){msg.className='msg err';msg.textContent='Value display time must be greater than 0.';return;}
   if(!r||r<1){msg.className='msg err';msg.textContent='Refresh rate must be at least 1 minute.';return;}
   msg.className='msg ok';msg.textContent='Saving\u2026 device will reboot and connect.';
   fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
@@ -349,10 +346,20 @@ void loadPrefs() {
   saved_endpoint = prefs.getString("endpoint", "");
   saved_stats = prefs.getUChar("stats", STAT_SUBSCRIBERS) & STAT_ALL;
   saved_refresh_minutes = prefs.getUInt("refresh", DEFAULT_REFRESH_MINUTES);
-  saved_stat_cycle_seconds =
-      prefs.getUInt("statCycle", DEFAULT_STAT_CYCLE_SECONDS);
-  saved_label_cycle_seconds =
-      prefs.getUInt("labelCycle", DEFAULT_LABEL_CYCLE_SECONDS);
+  saved_stat_cycle_seconds = prefs.getFloat("statCycle", 0);
+  if (saved_stat_cycle_seconds <= 0) {
+    unsigned long legacyStatCycle = prefs.getUInt("statCycle", 0);
+    saved_stat_cycle_seconds = legacyStatCycle > 0
+                                   ? (float)legacyStatCycle
+                                   : DEFAULT_STAT_CYCLE_SECONDS;
+  }
+  saved_label_cycle_seconds = prefs.getFloat("labelCycle", 0);
+  if (saved_label_cycle_seconds <= 0) {
+    unsigned long legacyLabelCycle = prefs.getUInt("labelCycle", 0);
+    saved_label_cycle_seconds = legacyLabelCycle > 0
+                                    ? (float)legacyLabelCycle
+                                    : DEFAULT_LABEL_CYCLE_SECONDS;
+  }
   prefs.end();
 
   if (saved_stats == 0)
@@ -361,20 +368,6 @@ void loadPrefs() {
     saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
   if (saved_refresh_minutes > MAX_REFRESH_MINUTES)
     saved_refresh_minutes = MAX_REFRESH_MINUTES;
-  if (saved_stat_cycle_seconds < MIN_CYCLE_SECONDS)
-    saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
-  if (saved_stat_cycle_seconds > MAX_CYCLE_SECONDS)
-    saved_stat_cycle_seconds = MAX_CYCLE_SECONDS;
-  if (saved_label_cycle_seconds < MIN_CYCLE_SECONDS)
-    saved_label_cycle_seconds = DEFAULT_LABEL_CYCLE_SECONDS;
-  if (saved_label_cycle_seconds >= saved_stat_cycle_seconds) {
-    if (saved_stat_cycle_seconds <= MIN_CYCLE_SECONDS)
-      saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
-    saved_label_cycle_seconds =
-        min(DEFAULT_LABEL_CYCLE_SECONDS, saved_stat_cycle_seconds - 1);
-    if (saved_label_cycle_seconds < MIN_CYCLE_SECONDS)
-      saved_label_cycle_seconds = MIN_CYCLE_SECONDS;
-  }
 
   Serial.print("Config loaded: ssid=");
   Serial.print(saved_ssid.length() ? saved_ssid : "(empty)");
@@ -385,16 +378,16 @@ void loadPrefs() {
 }
 
 void savePrefs(String ssid, String pass, String endpoint, uint8_t stats,
-               unsigned int refreshMinutes, unsigned int statCycleSeconds,
-               unsigned int labelCycleSeconds) {
+               unsigned int refreshMinutes, float statCycleSeconds,
+               float labelCycleSeconds) {
   prefs.begin("ytcounter", false);
   prefs.putString("ssid", ssid);
   prefs.putString("pass", pass);
   prefs.putString("endpoint", endpoint);
   prefs.putUChar("stats", stats);
   prefs.putUInt("refresh", refreshMinutes);
-  prefs.putUInt("statCycle", statCycleSeconds);
-  prefs.putUInt("labelCycle", labelCycleSeconds);
+  prefs.putFloat("statCycle", statCycleSeconds);
+  prefs.putFloat("labelCycle", labelCycleSeconds);
   prefs.end();
 }
 
@@ -420,8 +413,10 @@ String buildPage() {
   page.replace("HOURS_CHECKED",
                (saved_stats & STAT_WATCH_HOURS) ? "checked" : "");
   page.replace("REFRESH_PLACEHOLDER", String(saved_refresh_minutes));
-  page.replace("STAT_CYCLE_PLACEHOLDER", String(saved_stat_cycle_seconds));
-  page.replace("LABEL_CYCLE_PLACEHOLDER", String(saved_label_cycle_seconds));
+  page.replace("STAT_CYCLE_PLACEHOLDER",
+               String(saved_stat_cycle_seconds, 3));
+  page.replace("LABEL_CYCLE_PLACEHOLDER",
+               String(saved_label_cycle_seconds, 3));
   return page;
 }
 
@@ -459,18 +454,17 @@ void handleSave() {
   if (refreshMinutes > MAX_REFRESH_MINUTES)
     refreshMinutes = MAX_REFRESH_MINUTES;
 
-  int statCycleSeconds = server.arg("statCycle").toInt();
-  if (statCycleSeconds < MIN_CYCLE_SECONDS)
-    statCycleSeconds = MIN_CYCLE_SECONDS;
-  if (statCycleSeconds > MAX_CYCLE_SECONDS)
-    statCycleSeconds = MAX_CYCLE_SECONDS;
-
-  int labelCycleSeconds = server.arg("labelCycle").toInt();
-  if (labelCycleSeconds < MIN_CYCLE_SECONDS)
-    labelCycleSeconds = MIN_CYCLE_SECONDS;
-  if (labelCycleSeconds >= statCycleSeconds) {
+  float statCycleSeconds = server.arg("statCycle").toFloat();
+  if (statCycleSeconds <= 0) {
     server.send(400, "text/plain",
-                "Label display time must be shorter than value display time.");
+                "Value display time must be greater than 0.");
+    return;
+  }
+
+  float labelCycleSeconds = server.arg("labelCycle").toFloat();
+  if (labelCycleSeconds <= 0) {
+    server.send(400, "text/plain",
+                "Label display time must be greater than 0.");
     return;
   }
 
@@ -1367,7 +1361,7 @@ void setup() {
       server.begin();
 
       Display.displayClear();
-      Display.print("fetching");
+      Display.print("Get data...");
       delay(250);
 
       client.setInsecure();
@@ -1434,8 +1428,8 @@ void loop() {
       if (selectedStatsCount() > 1) {
         unsigned long phaseMs =
             showing_stat_label
-                ? (unsigned long)saved_label_cycle_seconds * 1000UL
-                : (unsigned long)saved_stat_cycle_seconds * 1000UL;
+                ? (unsigned long)(saved_label_cycle_seconds * 1000.0f)
+                : (unsigned long)(saved_stat_cycle_seconds * 1000.0f);
 
         if (now - cycle_lasttime >= phaseMs) {
           if (showing_stat_label) {
