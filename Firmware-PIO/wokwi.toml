@@ -6,3 +6,7 @@ rfc2217ServerPort = 4000
 
 [gdb]
 enabled = false
+
+[[net.forward]]
+from = "localhost:8180"
+to = "target:80"

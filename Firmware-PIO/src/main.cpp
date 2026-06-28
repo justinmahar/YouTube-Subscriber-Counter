@@ -6,12 +6,12 @@
 #include <MD_MAX72xx.h>
 #include <SPI.h>
 #include <HTTPClient.h>
-#include <string>
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <Preferences.h>
 #include <Update.h>
+#include <math.h>
 
 // File imports
 #include "FontSubs.h"
@@ -32,24 +32,48 @@ WebServer server(80);
 DNSServer dnsServer;
 Preferences prefs;
 
-unsigned long api_mtbs = 10000;
-unsigned long api_lasttime;
-long subs = 0;
-long views = 0;
-String apiUrl = "";
-StaticJsonDocument<1000> doc;
-bool showSubs = false;
+const unsigned long DISPLAY_UPDATE_MS = 1000;
+const unsigned long STAT_CYCLE_MS = 5000;
+const unsigned int DEFAULT_REFRESH_MINUTES = 5;
+const unsigned int MAX_REFRESH_MINUTES = 1440;
 
-String saved_ssid, saved_pass, saved_channel, saved_apikey;
+const uint8_t STAT_SUBSCRIBERS = 1 << 0;
+const uint8_t STAT_VIEWS = 1 << 1;
+const uint8_t STAT_WATCH_HOURS = 1 << 2;
+const uint8_t STAT_ALL = STAT_SUBSCRIBERS | STAT_VIEWS | STAT_WATCH_HOURS;
+
+const int STAT_INDEX_SUBSCRIBERS = 0;
+const int STAT_INDEX_VIEWS = 1;
+const int STAT_INDEX_WATCH_HOURS = 2;
+const int STAT_COUNT = 3;
+
+const uint8_t STAT_MASKS[STAT_COUNT] = { STAT_SUBSCRIBERS, STAT_VIEWS, STAT_WATCH_HOURS };
+
+unsigned long api_lasttime = 0;
+unsigned long display_lasttime = 0;
+unsigned long cycle_lasttime = 0;
+unsigned long stats_fetched_at = 0;
+double stat_values[STAT_COUNT] = { 0, 0, 0 };
+double stat_rates[STAT_COUNT] = { 0, 0, 0 };
+int current_stat_index = STAT_INDEX_SUBSCRIBERS;
+bool statsLoaded = false;
+StaticJsonDocument<1536> doc;
+
+String saved_ssid, saved_pass, saved_endpoint;
+uint8_t saved_stats = STAT_SUBSCRIBERS;
+unsigned int saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
 bool configMode = false;
 
 String num_format(long num);
+String html_escape(String value);
+bool fetchStats();
+void showProjectedStat();
 
 // ─── Config portal HTML ───────────────────────────────────────────────────────
 const char CONFIG_HTML[] PROGMEM = R"rawhtml(
 <!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>YouTube Counter Setup</title>
+<title>Stats Counter Setup</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#111;color:#e8e8e8;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
@@ -64,8 +88,12 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
   .dot-green{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0}
   .section{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em}
   label{font-size:11px;font-weight:600;color:#777;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px}
-  input[type=text],input[type=password]{width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:8px;padding:9px 12px;font-size:13px;color:#e8e8e8;outline:none}
-  input[type=text]:focus,input[type=password]:focus{border-color:#22c55e}
+  input[type=text],input[type=password],input[type=url],input[type=number]{width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:8px;padding:9px 12px;font-size:13px;color:#e8e8e8;outline:none}
+  input[type=text]:focus,input[type=password]:focus,input[type=url]:focus,input[type=number]:focus{border-color:#22c55e}
+  .checks{display:flex;flex-direction:column;gap:7px}
+  .check{display:flex;align-items:center;gap:8px;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:8px;padding:9px 12px;font-size:13px;color:#e8e8e8}
+  .check input{accent-color:#22c55e}
+  .check span{font-size:13px;color:#e8e8e8;text-transform:none;letter-spacing:0}
   input::placeholder{color:#444}
   .hint{font-size:11px;color:#555;margin-top:3px}
   .divider{height:1px;background:#222}
@@ -104,7 +132,7 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
 </style></head><body>
 <div class="card">
   <div class="header">
-    <div class="logo"><div class="dot">&#9654;</div><div><h1>YouTube Stats Counter</h1><div class="sub">Device setup</div></div></div>
+    <div class="logo"><div class="dot">&#9654;</div><div><h1>Stats Counter</h1><div class="sub">Device setup</div></div></div>
   </div>
   <div class="body">
     <div class="status"><div class="dot-green"></div>Connected &mdash; IP_PLACEHOLDER</div>
@@ -114,16 +142,25 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
     <div><label>Network name (SSID)</label><input type="text" id="ssid" placeholder="Leave blank to keep saved" value="SSID_PLACEHOLDER"></div>
     <div><label>Password <span style="color:#555;font-weight:400;text-transform:none">(leave blank to keep saved)</span></label><div class="pw-wrap"><input type="password" id="pw" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"><button class="eye-btn" type="button" onclick="toggleEye('pw','eye-pw')"><span id="eye-pw">&#128065;</span></button></div></div>
     <div class="divider"></div>
-    <div class="section">YouTube API</div>
+    <div class="section">Stats API</div>
     <div>
-      <label>Channel ID</label>
-      <input type="text" id="channel" placeholder="UCxxxxxxxxxxxxxxxxxx" value="CHANNEL_PLACEHOLDER">
-      <div class="hint">YouTube Studio &rarr; Settings &rarr; Channel &rarr; Advanced</div>
+      <label>Stats API endpoint</label>
+      <input type="url" id="endpoint" placeholder="https://your-domain.example/api/stats" value="ENDPOINT_PLACEHOLDER">
+      <div class="hint">Must return the documented stats JSON shape.</div>
     </div>
     <div>
-      <label>API key <span style="color:#555;font-weight:400;text-transform:none">(leave blank to keep saved)</span></label>
-      <div class="pw-wrap"><input type="password" id="apikey" placeholder="AIzaSy..."><button class="eye-btn" type="button" onclick="toggleEye('apikey','eye-api')"><span id="eye-api">&#128065;</span></button></div>
-      <div class="hint">Google Cloud Console &rarr; Credentials</div>
+      <label>Stats to show</label>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="stat-subs" SUBS_CHECKED><span>Subscribers</span></label>
+        <label class="check"><input type="checkbox" id="stat-views" VIEWS_CHECKED><span>Views</span></label>
+        <label class="check"><input type="checkbox" id="stat-hours" HOURS_CHECKED><span>Watch hours</span></label>
+      </div>
+      <div class="hint">Multiple selections cycle on the matrix.</div>
+    </div>
+    <div>
+      <label>Refresh rate (minutes)</label>
+      <input type="number" id="refresh" min="1" max="1440" step="1" value="REFRESH_PLACEHOLDER">
+      <div class="hint">The display projects values every second between API refreshes.</div>
     </div>
     <div id="msg" class="msg"></div>
     <button class="btn" onclick="save()">Save &amp; connect</button>
@@ -185,13 +222,20 @@ function toggleEye(inputId,iconId){
 function save(){
   var s=document.getElementById('ssid').value.trim();
   var p=document.getElementById('pw').value;
-  var c=document.getElementById('channel').value.trim();
-  var k=document.getElementById('apikey').value.trim();
+  var e=document.getElementById('endpoint').value.trim();
+  var r=parseInt(document.getElementById('refresh').value,10);
+  var stats=0;
+  if(document.getElementById('stat-subs').checked)stats|=1;
+  if(document.getElementById('stat-views').checked)stats|=2;
+  if(document.getElementById('stat-hours').checked)stats|=4;
   var msg=document.getElementById('msg');
-  if(!c){msg.className='msg err';msg.textContent='Channel ID is required.';return;}
+  if(!e){msg.className='msg err';msg.textContent='Stats API endpoint is required.';return;}
+  if(!/^https?:\/\//i.test(e)){msg.className='msg err';msg.textContent='Endpoint must start with http:// or https://';return;}
+  if(!stats){msg.className='msg err';msg.textContent='Choose at least one stat to show.';return;}
+  if(!r||r<1){msg.className='msg err';msg.textContent='Refresh rate must be at least 1 minute.';return;}
   msg.className='msg ok';msg.textContent='Saving\u2026 device will reboot and connect.';
   fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&channel='+encodeURIComponent(c)+'&apikey='+encodeURIComponent(k)})
+    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r})
   .then(r=>r.text()).then(t=>{msg.textContent=t;});
 }
 function uploadFirmware(){
@@ -234,28 +278,47 @@ function uploadFirmware(){
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 void loadPrefs() {
   prefs.begin("ytcounter", true);
-  saved_ssid    = prefs.getString("ssid",    "");
-  saved_pass    = prefs.getString("pass",    "");
-  saved_channel = prefs.getString("channel", "");
-  saved_apikey  = prefs.getString("apikey",  "");
+  saved_ssid            = prefs.getString("ssid", "");
+  saved_pass            = prefs.getString("pass", "");
+  saved_endpoint        = prefs.getString("endpoint", "");
+  saved_stats           = prefs.getUChar("stats", STAT_SUBSCRIBERS) & STAT_ALL;
+  saved_refresh_minutes = prefs.getUInt("refresh", DEFAULT_REFRESH_MINUTES);
+  prefs.end();
+
+  if (saved_stats == 0) saved_stats = STAT_SUBSCRIBERS;
+  if (saved_refresh_minutes < 1) saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
+  if (saved_refresh_minutes > MAX_REFRESH_MINUTES) saved_refresh_minutes = MAX_REFRESH_MINUTES;
+}
+
+void savePrefs(String ssid, String pass, String endpoint, uint8_t stats, unsigned int refreshMinutes) {
+  prefs.begin("ytcounter", false);
+  prefs.putString("ssid", ssid);
+  prefs.putString("pass", pass);
+  prefs.putString("endpoint", endpoint);
+  prefs.putUChar("stats", stats);
+  prefs.putUInt("refresh", refreshMinutes);
   prefs.end();
 }
 
-void savePrefs(String ssid, String pass, String channel, String apikey) {
-  prefs.begin("ytcounter", false);
-  prefs.putString("ssid",    ssid);
-  prefs.putString("pass",    pass);
-  prefs.putString("channel", channel);
-  prefs.putString("apikey",  apikey);
-  prefs.end();
+String html_escape(String value) {
+  value.replace("&", "&amp;");
+  value.replace("\"", "&quot;");
+  value.replace("'", "&#39;");
+  value.replace("<", "&lt;");
+  value.replace(">", "&gt;");
+  return value;
 }
 
 String buildPage() {
   String page = String(CONFIG_HTML);
   String ip = configMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
-  page.replace("IP_PLACEHOLDER",      ip);
-  page.replace("SSID_PLACEHOLDER",    saved_ssid);
-  page.replace("CHANNEL_PLACEHOLDER", saved_channel);
+  page.replace("IP_PLACEHOLDER", ip);
+  page.replace("SSID_PLACEHOLDER", html_escape(saved_ssid));
+  page.replace("ENDPOINT_PLACEHOLDER", html_escape(saved_endpoint));
+  page.replace("SUBS_CHECKED", (saved_stats & STAT_SUBSCRIBERS) ? "checked" : "");
+  page.replace("VIEWS_CHECKED", (saved_stats & STAT_VIEWS) ? "checked" : "");
+  page.replace("HOURS_CHECKED", (saved_stats & STAT_WATCH_HOURS) ? "checked" : "");
+  page.replace("REFRESH_PLACEHOLDER", String(saved_refresh_minutes));
   return page;
 }
 
@@ -265,17 +328,37 @@ void handleRoot() {
 }
 
 void handleSave() {
-  if (!server.hasArg("channel")) {
-    server.send(400, "text/plain", "Channel ID is required.");
+  if (!server.hasArg("endpoint")) {
+    server.send(400, "text/plain", "Stats API endpoint is required.");
     return;
   }
+
+  String endpoint = server.arg("endpoint");
+  endpoint.trim();
+  if (endpoint.length() == 0) {
+    server.send(400, "text/plain", "Stats API endpoint is required.");
+    return;
+  }
+  if (!endpoint.startsWith("http://") && !endpoint.startsWith("https://")) {
+    server.send(400, "text/plain", "Endpoint must start with http:// or https://");
+    return;
+  }
+
+  uint8_t stats = server.arg("stats").toInt() & STAT_ALL;
+  if (stats == 0) {
+    server.send(400, "text/plain", "Choose at least one stat to show.");
+    return;
+  }
+
+  int refreshMinutes = server.arg("refresh").toInt();
+  if (refreshMinutes < 1) refreshMinutes = 1;
+  if (refreshMinutes > MAX_REFRESH_MINUTES) refreshMinutes = MAX_REFRESH_MINUTES;
+
   String new_ssid = server.arg("ssid");
   if (new_ssid.length() == 0) new_ssid = saved_ssid;
   String new_pass = server.arg("pass");
   if (new_pass.length() == 0) new_pass = saved_pass;
-  String new_apikey = server.arg("apikey");
-  if (new_apikey.length() == 0) new_apikey = saved_apikey;
-  savePrefs(new_ssid, new_pass, server.arg("channel"), new_apikey);
+  savePrefs(new_ssid, new_pass, endpoint, stats, refreshMinutes);
   server.send(200, "text/plain", "Saved! Rebooting now...");
   delay(1500);
   ESP.restart();
@@ -340,6 +423,113 @@ void registerRoutes() {
   });
 }
 
+bool isStatSelected(int index) {
+  return (saved_stats & STAT_MASKS[index]) != 0;
+}
+
+int selectedStatsCount() {
+  int count = 0;
+  for (int i = 0; i < STAT_COUNT; i++) {
+    if (isStatSelected(i)) count++;
+  }
+  return count;
+}
+
+int firstSelectedStatIndex() {
+  for (int i = 0; i < STAT_COUNT; i++) {
+    if (isStatSelected(i)) return i;
+  }
+  return STAT_INDEX_SUBSCRIBERS;
+}
+
+int nextSelectedStatIndex(int currentIndex) {
+  for (int step = 1; step <= STAT_COUNT; step++) {
+    int index = (currentIndex + step) % STAT_COUNT;
+    if (isStatSelected(index)) return index;
+  }
+  return firstSelectedStatIndex();
+}
+
+void ensureCurrentStatSelected() {
+  if (!isStatSelected(current_stat_index)) {
+    current_stat_index = firstSelectedStatIndex();
+  }
+}
+
+bool fetchStats() {
+  HTTPClient http;
+  bool beginOk = false;
+
+  Serial.print("Fetching stats: ");
+  Serial.println(saved_endpoint);
+
+  if (saved_endpoint.startsWith("https://")) {
+    client.setInsecure();
+    beginOk = http.begin(client, saved_endpoint);
+  } else {
+    beginOk = http.begin(saved_endpoint);
+  }
+
+  if (!beginOk) {
+    Serial.println("HTTP begin failed.");
+    return false;
+  }
+
+  int httpCode = http.GET();
+  if (httpCode != HTTP_CODE_OK) {
+    Serial.print("Stats endpoint returned HTTP ");
+    Serial.println(httpCode);
+    http.end();
+    return false;
+  }
+
+  String payload = http.getString();
+  DeserializationError error = deserializeJson(doc, payload);
+  http.end();
+
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.f_str());
+    return false;
+  }
+
+  JsonObject adjusted = doc["adjusted"].as<JsonObject>();
+  JsonObject rates = doc["growthRatesPerMinute"].as<JsonObject>();
+  if (adjusted.isNull() || rates.isNull()) {
+    Serial.println("Stats response missing adjusted or growthRatesPerMinute.");
+    return false;
+  }
+
+  stat_values[STAT_INDEX_SUBSCRIBERS] = adjusted["subscribers"] | 0.0;
+  stat_values[STAT_INDEX_VIEWS] = adjusted["totalViews"] | 0.0;
+  stat_values[STAT_INDEX_WATCH_HOURS] = adjusted["watchHours"] | 0.0;
+  stat_rates[STAT_INDEX_SUBSCRIBERS] = rates["subscribers"] | 0.0;
+  stat_rates[STAT_INDEX_VIEWS] = rates["views"] | 0.0;
+  stat_rates[STAT_INDEX_WATCH_HOURS] = rates["watchHours"] | 0.0;
+
+  stats_fetched_at = millis();
+  statsLoaded = true;
+  ensureCurrentStatSelected();
+
+  Serial.println("Stats updated.");
+  return true;
+}
+
+void showProjectedStat() {
+  if (!statsLoaded) return;
+
+  ensureCurrentStatSelected();
+  double elapsedMinutes = (millis() - stats_fetched_at) / 60000.0;
+  double projected = stat_values[current_stat_index] +
+                     (stat_rates[current_stat_index] * elapsedMinutes);
+  if (projected < 0) projected = 0;
+
+  long displayValue = (long)(projected + 0.5);
+  String formatted = num_format(displayValue);
+  Serial.println(formatted);
+  Display.print(formatted);
+}
+
 void startConfigPortal() {
   configMode = true;
   Display.print("Setup AP");
@@ -356,7 +546,7 @@ void startConfigPortal() {
   Serial.print("AP IP: ");
   Serial.println(WiFi.softAPIP());
 
-  Display.print("WiFi:YT");
+  Display.print("Setup");
 }
 
 // ─── Setup ───────────────────────────────────────────────────────────────────
@@ -371,8 +561,8 @@ void setup() {
   loadPrefs();
 
   bool hasCredentials = (saved_ssid.length() > 0 &&
-                         saved_channel.length() > 0 &&
-                         saved_apikey.length() > 0);
+                         saved_endpoint.length() > 0 &&
+                         (saved_stats & STAT_ALL) != 0);
 
   if (hasCredentials) {
     Display.print(" WiFi...");
@@ -428,44 +618,28 @@ void loop() {
   server.handleClient();
 
   if (WiFi.status() == WL_CONNECTED) {
-    if (millis() - api_lasttime > api_mtbs) {
-      HTTPClient http;
+    unsigned long now = millis();
+    unsigned long refreshInterval = (unsigned long)saved_refresh_minutes * 60000UL;
 
-      std::string channelID(saved_channel.c_str());
-      std::string apiKey(saved_apikey.c_str());
-
-      apiUrl = ("https://www.googleapis.com/youtube/v3/channels?part=statistics&id=" +
-                channelID + "&key=" + apiKey).c_str();
-
-      http.begin(apiUrl);
-      int httpCode = http.GET();
-
-      if (httpCode > 0) {
-        String payload = http.getString();
-
-        DeserializationError error = deserializeJson(doc, payload);
-        if (error) {
-          Serial.print(F("deserializeJson() failed: "));
-          Serial.println(error.f_str());
-          return;
-        }
-
-        Serial.print(payload);
-        if (showSubs) {
-          subs = doc["items"][0]["statistics"]["subscriberCount"];
-          String subsCount = num_format(subs);
-          Serial.println(subsCount);
-          Display.print("*" + subsCount);
-        } else {
-          views = doc["items"][0]["statistics"]["viewCount"];
-          String viewsCount = num_format(views);
-          Serial.println(viewsCount);
-          Display.print("*" + viewsCount);
-        }
-
-        showSubs = !showSubs;
+    if (!statsLoaded || api_lasttime == 0 || now - api_lasttime >= refreshInterval) {
+      if (fetchStats()) {
+        showProjectedStat();
+        display_lasttime = now;
+        cycle_lasttime = now;
+      } else if (!statsLoaded) {
+        Display.print("API err");
       }
-      api_lasttime = millis();
+      api_lasttime = now;
+    }
+
+    if (statsLoaded && selectedStatsCount() > 1 && now - cycle_lasttime >= STAT_CYCLE_MS) {
+      current_stat_index = nextSelectedStatIndex(current_stat_index);
+      showProjectedStat();
+      display_lasttime = now;
+      cycle_lasttime = now;
+    } else if (statsLoaded && now - display_lasttime >= DISPLAY_UPDATE_MS) {
+      showProjectedStat();
+      display_lasttime = now;
     }
   }
 }

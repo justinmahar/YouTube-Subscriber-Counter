@@ -1,6 +1,6 @@
 # YouTube Stats Counter
 
-An ESP32-based display that shows your YouTube subscriber and view counts on a MAX7219 LED matrix. No IDE required after the first flash — configure everything through a built-in web portal and push firmware updates over Wi-Fi.
+An ESP32-based display that shows projected channel stats from a configurable JSON endpoint on a MAX7219 LED matrix. No IDE required after the first flash — configure everything through a built-in web portal and push firmware updates over Wi-Fi.
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/justinmahar/YouTube-Subscriber-Counter/refs/heads/main/Images/Thumbnail2.png" width="560" alt="YouTube Subscriber Counter V2.0">
@@ -14,12 +14,13 @@ An ESP32-based display that shows your YouTube subscriber and view counts on a M
 
 ## Features
 
-- Alternates between subscriber count and view count on a 4-module MAX7219 matrix
+- Shows subscribers, views, watch hours, or any combination on a 4-module MAX7219 matrix
+- Projects displayed values every second from per-minute growth rates between API refreshes
 - **Captive portal setup** — on first boot the ESP32 broadcasts a hotspot; connect and configure everything from your phone or browser, no code changes needed
 - **Persistent config** — credentials saved to NVS flash, survive reboots and firmware updates
 - **Wi-Fi scanner** — scan nearby networks and tap to auto-fill the SSID field
 - **IP display on boot** — scrolls your local IP across the matrix for 5 seconds so you always know where to reach the config page
-- **In-browser reconfigure** — visit the device IP any time to change Wi-Fi or YouTube settings; leave any field blank to keep the saved value
+- **In-browser reconfigure** — visit the device IP any time to change Wi-Fi or stats endpoint settings; leave the Wi-Fi fields blank to keep saved values
 - **OTA firmware updates** — upload a compiled `.bin` straight from the config page, no USB cable needed after first flash
 
 ---
@@ -86,19 +87,27 @@ Regular Version:
 
 ## First-Time Setup
 
-### 1. Get a YouTube API key
+### 1. Prepare a stats endpoint
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a project → Enable **YouTube Data API v3**
-3. Go to Credentials → Create API key → copy it
+The device fetches a user-provided endpoint that returns this JSON shape:
 
-### 2. Find your Channel ID
+```json
+{
+  "adjusted": {
+    "asOfUnix": 1782669205,
+    "subscribers": 10276,
+    "totalViews": 2839588,
+    "watchHours": 100352
+  },
+  "growthRatesPerMinute": {
+    "subscribers": 0.0095,
+    "views": 4.43,
+    "watchHours": 0.33
+  }
+}
+```
 
-1. Open [YouTube Studio](https://studio.youtube.com/)
-2. Settings → Channel → Advanced settings
-3. Copy the Channel ID (starts with `UC...`)
-
-### 3. Flash the firmware
+### 2. Flash the firmware
 
 **Option A — Browser installer (recommended)**
 
@@ -119,13 +128,13 @@ Requires Chrome or Edge on desktop.
 
 
 
-### 4. Configure via the portal
+### 3. Configure via the portal
 
-1. Power on the device — the matrix shows `WiFi:YT`
+1. Power on the device — the matrix shows `Setup`
 2. On your phone or laptop, connect to the Wi-Fi network **`YouTubeCounter-Setup`**
 3. A browser page opens automatically (or navigate to `192.168.4.1`)
 4. Tap **Scan for networks**, pick your Wi-Fi, enter your password
-5. Enter your YouTube Channel ID and API key
+5. Enter your stats endpoint, select which stats to show, and choose the refresh rate in minutes
 6. Hit **Save & connect** — the device reboots and starts fetching stats
 
 
@@ -140,10 +149,10 @@ Requires Chrome or Edge on desktop.
 On every boot the device connects to your saved Wi-Fi and scrolls the assigned IP address across the matrix. Open that IP in any browser on the same network to:
 
 - Change Wi-Fi network or password
-- Update YouTube Channel ID or API key
+- Update the stats endpoint, selected stats, or refresh rate
 - Upload new firmware (`.bin`) without a USB cable
 
-Leave any field blank when saving and the device keeps the previously stored value — you only need to fill in what you want to change.
+Leave the Wi-Fi fields blank when saving and the device keeps the previously stored network values.
 
 ---
 
@@ -180,11 +189,12 @@ Simulate the ESP32 + 4-module MAX7219 matrix without hardware.
 2. Build: `pio run`
 3. Start: `Cmd+Shift+P` → **Wokwi: Start Simulator**
 4. Keep the **simulator tab visible** — Wokwi pauses when you switch away.
-5. Open the serial panel in the sim and set baud to **9600**, then reset the ESP32.
+5. Open `http://localhost:8180` in your browser to access the simulated setup portal.
+6. Use **`Wokwi-GUEST`** as the Wi-Fi SSID, leave the password blank, enter your private stats endpoint, choose stats, and save.
 
-Circuit wiring is defined in `diagram.json` (DIN→GPIO23, CLK→GPIO18, CS→GPIO5, power via `V+` / `GND.2`). On first boot with no saved credentials, the matrix shows `WiFi:YT` and the device starts the config portal.
+Circuit wiring is defined in `diagram.json` (DIN→GPIO23, CLK→GPIO18, CS→GPIO5, power via `V+` / `GND.2`). On first boot with no saved credentials, the matrix shows `Setup` and the device starts the config portal.
 
-To test Wi-Fi in the sim, connect to the virtual network **`Wokwi-GUEST`** (open, channel 6) from the config portal, or enter it manually when saving settings.
+For private local endpoint values, keep them in an untracked `.env.local` or notes file and paste them into the portal. Do not commit production endpoint URLs.
 
 ### Web installer binaries
 
