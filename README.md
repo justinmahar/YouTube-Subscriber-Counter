@@ -185,12 +185,19 @@ Simulate the ESP32 + 4-module MAX7219 matrix without hardware.
 
 **Requirements:** [PlatformIO](https://platformio.org/) and the [Wokwi for VS Code](https://marketplace.visualstudio.com/items?itemName=wokwi.wokwi-vscode) extension.
 
-1. Open **`Firmware-PIO`** as your workspace root (where `wokwi.toml` lives).
-2. Build: `pio run`
+1. Open **`Firmware-PIO`** as your workspace root (where `wokwi.toml` lives). If the workspace root is the repo folder instead, Wokwi will not load port forwarding.
+2. Build: `./scripts/build-firmware.sh` or `pio run`
 3. Start: `Cmd+Shift+P` → **Wokwi: Start Simulator**
 4. Keep the **simulator tab visible** — Wokwi pauses when you switch away.
-5. Open `http://localhost:8180` in your browser to access the simulated setup portal.
-6. Use **`Wokwi-GUEST`** as the Wi-Fi SSID, leave the password blank, enter your private stats endpoint, choose stats, and save.
+5. Open **`http://localhost:8180`** (not `https://`) in your browser to access the simulated setup portal.
+6. On first boot the firmware auto-connects to **`Wokwi-GUEST`** for simulator setup. Enter your private stats endpoint, choose stats, set refresh minutes, and save.
+
+If `localhost:8180` does not load:
+
+- Confirm the workspace root is **`Firmware-PIO`**, not the parent repo folder.
+- Stop and restart the simulator after changing `wokwi.toml`.
+- Check the serial log for `Wokwi setup portal ready.` and `Open http://localhost:8180`.
+- If you see `Setup AP` instead, the sim did not join `Wokwi-GUEST`; reset the ESP32 in the simulator and try again.
 
 Circuit wiring is defined in `diagram.json` (DIN→GPIO23, CLK→GPIO18, CS→GPIO5, power via `V+` / `GND.2`). On first boot with no saved credentials, the matrix shows `Setup` and the device starts the config portal.
 

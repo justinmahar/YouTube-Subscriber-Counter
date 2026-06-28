@@ -23,8 +23,10 @@
 #define CS_PIN 5
 
 #define AP_SSID "YouTubeCounter-Setup"
+#define WOKWI_GUEST_SSID "Wokwi-GUEST"
 #define DNS_PORT 53
 #define WIFI_TIMEOUT_MS 15000
+#define WOKWI_SETUP_TIMEOUT_MS 8000
 
 MD_Parola Display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 WiFiClientSecure client;
@@ -63,6 +65,7 @@ String saved_ssid, saved_pass, saved_endpoint;
 uint8_t saved_stats = STAT_SUBSCRIBERS;
 unsigned int saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
 bool configMode = false;
+bool captivePortalActive = false;
 
 String num_format(long num);
 String html_escape(String value);
@@ -288,6 +291,13 @@ void loadPrefs() {
   if (saved_stats == 0) saved_stats = STAT_SUBSCRIBERS;
   if (saved_refresh_minutes < 1) saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
   if (saved_refresh_minutes > MAX_REFRESH_MINUTES) saved_refresh_minutes = MAX_REFRESH_MINUTES;
+
+  Serial.print("Config loaded: ssid=");
+  Serial.print(saved_ssid.length() ? saved_ssid : "(empty)");
+  Serial.print(", endpoint=");
+  Serial.print(saved_endpoint.length() ? "set" : "empty");
+  Serial.print(", stats=");
+  Serial.println(saved_stats);
 }
 
 void savePrefs(String ssid, String pass, String endpoint, uint8_t stats, unsigned int refreshMinutes) {
@@ -355,7 +365,14 @@ void handleSave() {
   if (refreshMinutes > MAX_REFRESH_MINUTES) refreshMinutes = MAX_REFRESH_MINUTES;
 
   String new_ssid = server.arg("ssid");
-  if (new_ssid.length() == 0) new_ssid = saved_ssid;
+  new_ssid.trim();
+  if (new_ssid.length() == 0) {
+    if (WiFi.status() == WL_CONNECTED && WiFi.SSID() == WOKWI_GUEST_SSID) {
+      new_ssid = WOKWI_GUEST_SSID;
+    } else {
+      new_ssid = saved_ssid;
+    }
+  }
   String new_pass = server.arg("pass");
   if (new_pass.length() == 0) new_pass = saved_pass;
   savePrefs(new_ssid, new_pass, endpoint, stats, refreshMinutes);
@@ -530,6 +547,36 @@ void showProjectedStat() {
   Display.print(formatted);
 }
 
+bool startWokwiConfigPortal() {
+  Display.print(" Wokwi...");
+  Serial.println("Trying Wokwi-GUEST for setup portal...");
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WOKWI_GUEST_SSID);
+
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < WOKWI_SETUP_TIMEOUT_MS) {
+    delay(250);
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Wokwi-GUEST not found.");
+    return false;
+  }
+
+  configMode = true;
+  registerRoutes();
+  server.begin();
+
+  Serial.println("Wokwi setup portal ready.");
+  Serial.println("Open http://localhost:8180 in your browser.");
+  Serial.print("ESP IP: ");
+  Serial.println(WiFi.localIP());
+
+  Display.print("Setup");
+  return true;
+}
+
 void startConfigPortal() {
   configMode = true;
   Display.print("Setup AP");
@@ -539,6 +586,7 @@ void startConfigPortal() {
   delay(500);
 
   dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+  captivePortalActive = true;
   registerRoutes();
   server.begin();
 
@@ -599,18 +647,24 @@ void setup() {
       client.setInsecure();
     } else {
       Serial.println("WiFi failed. Starting config portal.");
-      startConfigPortal();
+      if (!startWokwiConfigPortal()) {
+        startConfigPortal();
+      }
     }
   } else {
     Serial.println("No credentials. Starting config portal.");
-    startConfigPortal();
+    if (!startWokwiConfigPortal()) {
+      startConfigPortal();
+    }
   }
 }
 
 // ─── Loop ────────────────────────────────────────────────────────────────────
 void loop() {
   if (configMode) {
-    dnsServer.processNextRequest();
+    if (captivePortalActive) {
+      dnsServer.processNextRequest();
+    }
     server.handleClient();
     return;
   }
