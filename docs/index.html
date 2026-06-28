@@ -44,47 +44,6 @@
       text-align: center;
     }
 
-    .eyebrow {
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .15em;
-      text-transform: uppercase;
-      color: var(--green);
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .eyebrow::before, .eyebrow::after {
-      content: '';
-      display: block;
-      height: 1px;
-      width: 40px;
-      background: var(--green);
-      opacity: .4;
-    }
-
-    /* Matrix display animation */
-    .matrix-display {
-      width: 220px;
-      height: 52px;
-      background: #0a0a0a;
-      border: 1.5px solid #1f1f1f;
-      border-radius: 6px;
-      margin: 0 auto 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 0 24px rgba(34,197,94,.08), inset 0 0 12px rgba(0,0,0,.6);
-    }
-    .matrix-display canvas {
-      image-rendering: pixelated;
-    }
-
     .hero h1 {
       font-family: var(--mono);
       font-size: clamp(28px, 5vw, 42px);
@@ -288,13 +247,6 @@
 <body>
 
 <section class="hero">
-  <div class="eyebrow">Justin Mahar</div>
-
-  <!-- Pixel matrix display animation -->
-  <div class="matrix-display">
-    <canvas id="matrix" width="220" height="52"></canvas>
-  </div>
-
   <h1>YouTube Stats<br><span>Counter</span></h1>
   <p>Flash your ESP32 directly from the browser — no IDE, no drivers, no hassle. One click and you're running.</p>
 </section>
@@ -365,83 +317,6 @@
   <br>
   Original project, hardware &amp; installer design by <a href="https://github.com/ThePrintingPilot" target="_blank">The Printing Pilot</a>
 </footer>
-
-<!-- Matrix pixel animation -->
-<script>
-(function(){
-  var canvas = document.getElementById('matrix');
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-  var DOT = 4, GAP = 1, STEP = DOT + GAP;
-  var COLS = Math.floor(W / STEP), ROWS = Math.floor(H / STEP);
-  var GREEN = '#22c55e', DIM = '#1a2e1a';
-
-  // Simple 5x5 font for digits and a few chars
-  var glyphs = {
-    '0':['01110','10001','10011','10101','11001','10001','01110'],
-    '1':['00100','01100','00100','00100','00100','00100','01110'],
-    '2':['01110','10001','00001','00010','00100','01000','11111'],
-    '3':['11111','00010','00100','00010','00001','10001','01110'],
-    '4':['00010','00110','01010','10010','11111','00010','00010'],
-    '5':['11111','10000','11110','00001','00001','10001','01110'],
-    '6':['00110','01000','10000','11110','10001','10001','01110'],
-    '7':['11111','00001','00010','00100','01000','01000','01000'],
-    '8':['01110','10001','10001','01110','10001','10001','01110'],
-    '9':['01110','10001','10001','01111','00001','00010','01100'],
-    'S':['01111','10000','10000','01110','00001','00001','11110'],
-    'U':['10001','10001','10001','10001','10001','10001','01110'],
-    'B':['11110','10001','10001','11110','10001','10001','11110'],
-    ' ':['00000','00000','00000','00000','00000','00000','00000'],
-    '.':['00000','00000','00000','00000','00000','00000','00100'],
-    'K':['10001','10010','10100','11000','10100','10010','10001'],
-    'M':['10001','11011','10101','10001','10001','10001','10001'],
-  };
-
-  function drawText(text, offsetX) {
-    ctx.clearRect(0, 0, W, H);
-    var x = offsetX;
-    for (var i = 0; i < text.length; i++) {
-      var ch = text[i].toUpperCase();
-      var g = glyphs[ch] || glyphs[' '];
-      for (var row = 0; row < g.length; row++) {
-        for (var col = 0; col < g[row].length; col++) {
-          var lit = g[row][col] === '1';
-          ctx.fillStyle = lit ? GREEN : DIM;
-          var px = x + col * STEP;
-          var py = 6 + row * STEP;
-          if (px >= -STEP && px < W + STEP)
-            ctx.fillRect(px, py, DOT, DOT);
-        }
-      }
-      x += 6 * STEP;
-    }
-  }
-
-  var messages = ['SUB COUNT', '1.23K SUBS', '456.7K', 'VIEWS'];
-  var msgIdx = 0;
-  var offset = W;
-  var textWidth;
-  var currentMsg;
-
-  function nextMsg() {
-    msgIdx = (msgIdx + 1) % messages.length;
-    currentMsg = messages[msgIdx];
-    textWidth = currentMsg.length * 6 * STEP;
-    offset = W;
-  }
-
-  currentMsg = messages[0];
-  textWidth = currentMsg.length * 6 * STEP;
-
-  function tick() {
-    offset -= 1.5;
-    if (offset < -textWidth - 20) nextMsg();
-    drawText(currentMsg, offset);
-    requestAnimationFrame(tick);
-  }
-  tick();
-})();
-</script>
 
 <!-- Load static manifest -->
 <script>
