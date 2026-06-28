@@ -109,6 +109,7 @@ void showStatLabel();
 void renderRightAlignedStat(const char *text);
 void renderRightAlignedStatRollingLastDigit(const char *oldText,
                                             const char *newText);
+bool checkAndRunMilestoneAnimation();
 double getProjectedStatValue(int statIndex, double currentUnixTimestamp);
 double getProjectedWholeStatValue(double baselineStartedAtUnix,
                                   double startingValue,
@@ -784,8 +785,114 @@ bool fetchStats() {
 static char statDisplayBuffer[20];
 static String lastDisplayedValue = "";
 static bool statDisplayScrolling = false;
+static double lastMilestoneCheckValue[STAT_COUNT] = {0, 0, 0};
+static bool hasLastMilestoneCheckValue[STAT_COUNT] = {false, false, false};
+
+struct MilestoneRule {
+  double interval;
+  MilestoneAnimation animation;
+};
+
+static const MilestoneRule SUBSCRIBER_MILESTONES[] = {
+    {10000000.0, MilestoneAnimation::Subs10M},
+    {1000000.0, MilestoneAnimation::Subs1M},
+    {100000.0, MilestoneAnimation::Subs100K},
+    {10000.0, MilestoneAnimation::Subs10K},
+    {1000.0, MilestoneAnimation::Subs1K},
+    {100.0, MilestoneAnimation::Subs100},
+};
+
+static const MilestoneRule VIEW_MILESTONES[] = {
+    {100000000.0, MilestoneAnimation::Views100M},
+    {10000000.0, MilestoneAnimation::Views10M},
+    {1000000.0, MilestoneAnimation::Views1M},
+    {100000.0, MilestoneAnimation::Views100K},
+    {10000.0, MilestoneAnimation::Views10K},
+};
+
+static const MilestoneRule HOURS_MILESTONES[] = {
+    {10000000.0, MilestoneAnimation::Hours10M},
+    {1000000.0, MilestoneAnimation::Hours1M},
+    {100000.0, MilestoneAnimation::Hours100K},
+    {10000.0, MilestoneAnimation::Hours10K},
+    {1000.0, MilestoneAnimation::Hours1K},
+    {100.0, MilestoneAnimation::Hours100},
+};
 
 static bool isDigitChar(char c) { return c >= '0' && c <= '9'; }
+
+static bool crossedInterval(double previousValue, double currentValue,
+                            double interval) {
+  return floor(previousValue / interval) < floor(currentValue / interval);
+}
+
+static bool findCrossedMilestoneAnimation(
+    int statIndex, double previousValue, double currentValue,
+    MilestoneAnimation &animation) {
+  if (!isfinite(previousValue) || !isfinite(currentValue) ||
+      currentValue <= previousValue) {
+    return false;
+  }
+
+  const MilestoneRule *rules = SUBSCRIBER_MILESTONES;
+  size_t ruleCount =
+      sizeof(SUBSCRIBER_MILESTONES) / sizeof(SUBSCRIBER_MILESTONES[0]);
+
+  if (statIndex == STAT_INDEX_VIEWS) {
+    rules = VIEW_MILESTONES;
+    ruleCount = sizeof(VIEW_MILESTONES) / sizeof(VIEW_MILESTONES[0]);
+  } else if (statIndex == STAT_INDEX_WATCH_HOURS) {
+    rules = HOURS_MILESTONES;
+    ruleCount = sizeof(HOURS_MILESTONES) / sizeof(HOURS_MILESTONES[0]);
+  }
+
+  for (size_t i = 0; i < ruleCount; i++) {
+    if (crossedInterval(previousValue, currentValue, rules[i].interval)) {
+      animation = rules[i].animation;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool checkAndRunMilestoneAnimation() {
+  if (!statsLoaded)
+    return false;
+
+  double currentUnixTimestamp =
+      stats_as_of_unix + ((millis() - stats_fetched_at) / 1000.0);
+
+  for (int statIndex = 0; statIndex < STAT_COUNT; statIndex++) {
+    if (!isStatSelected(statIndex))
+      continue;
+
+    double projected = getProjectedStatValue(statIndex, currentUnixTimestamp);
+
+    if (!hasLastMilestoneCheckValue[statIndex]) {
+      lastMilestoneCheckValue[statIndex] = projected;
+      hasLastMilestoneCheckValue[statIndex] = true;
+      continue;
+    }
+
+    MilestoneAnimation animation;
+    if (findCrossedMilestoneAnimation(statIndex,
+                                      lastMilestoneCheckValue[statIndex],
+                                      projected, animation)) {
+      lastMilestoneCheckValue[statIndex] = projected;
+      Serial.print("Milestone crossed: ");
+      Serial.println(STAT_LABELS[statIndex]);
+      runMilestoneAnimation(Display, animation);
+      lastDisplayedValue = "";
+      statDisplayScrolling = false;
+      return true;
+    }
+
+    lastMilestoneCheckValue[statIndex] = projected;
+  }
+
+  return false;
+}
 
 static bool shouldRollLastDigit(const String &oldValue,
                                 const String &newValue) {
@@ -1310,11 +1417,22 @@ void loop() {
       api_lasttime = now;
     }
 
-    if (statsLoaded && statDisplayScrolling && !showing_stat_label) {
-      Display.displayAnimate();
-    }
-
     if (statsLoaded) {
+      if (checkAndRunMilestoneAnimation()) {
+        now = millis();
+        if (showing_stat_label) {
+          showStatLabel();
+        } else {
+          showProjectedStat();
+        }
+        cycle_lasttime = now;
+        display_lasttime = now;
+      }
+
+      if (statDisplayScrolling && !showing_stat_label) {
+        Display.displayAnimate();
+      }
+
       if (selectedStatsCount() > 1) {
         unsigned long phaseMs =
             showing_stat_label
