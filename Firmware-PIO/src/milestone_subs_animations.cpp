@@ -78,7 +78,7 @@ static void subsAnimTier1K(MD_Parola &display) {
   milestoneEffectEnd(ctx);
 }
 
-// +10K — slow build, tsunami, counter climb, comets, fireworks, pulses, collapse.
+// +10K — slow build, tsunami, counter climb, falling comets, fireworks, pulses, collapse.
 static void subsAnimTier10K(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
@@ -89,7 +89,7 @@ static void subsAnimTier10K(MD_Parola &display) {
   milestoneAnimTripleTsunami(ctx, 22, 42, 90);
   milestoneAnimCounterClimb(ctx, 32);
   milestoneAnimCounterShimmer(ctx, 8, 35);
-  milestoneAnimDualComets(ctx, 2, 28);
+  milestoneAnimFallingComets(ctx, 2, 24);
 
   const int burstX[4] = {ctx.width / 4, 3 * ctx.width / 4, ctx.width / 4,
                          3 * ctx.width / 4};
@@ -142,7 +142,7 @@ static void subsAnimTier100K(MD_Parola &display) {
 }
 
 // +1M — million-scale: edge surge, trinity blast, firestorm barrages, chain
-// reaction, shockwave storm, comet passes, supernova finale.
+// reaction, shockwave storm, falling comets, supernova finale.
 static void subsAnimTier1M(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
@@ -179,7 +179,7 @@ static void subsAnimTier1M(MD_Parola &display) {
   milestoneAnimChainExplosions(ctx, chainReverse, 6, 9, 26, 32);
 
   milestoneAnimShockwaveFlashes(ctx, 7, 48, 38);
-  milestoneAnimDualComets(ctx, 3, 24);
+  milestoneAnimFallingComets(ctx, 3, 22);
 
   const int wave2X[13] = {2, ctx.width / 8, ctx.width / 5, 2 * ctx.width / 5,
                           ctx.width / 2, 3 * ctx.width / 5, 4 * ctx.width / 5,

@@ -69,9 +69,9 @@ Tier 1 fires on every 100; higher tiers fire on their own boundaries (e.g. 1,000
 | 14 | Watch hours | 1    | 100       | Done (hourglass drains top → bottom) |
 | 15 | Watch hours | 2    | 1K        | Done (sand stream + tick sweep + ripple) |
 | 16 | Watch hours | 3    | 10K       | Done (twin hourglasses build, sync drain, blasts) |
-| 17 | Watch hours | 4    | 100K      | Planned |
-| 18 | Watch hours | 5    | 1M        | Planned |
-| 19 | Watch hours | 6    | 10M       | Planned |
+| 17 | Watch hours | 4    | 100K      | Done (triple hourglasses + megablast finale) |
+| 18 | Watch hours | 5    | 1M        | Done (triple drain + firework barrage) |
+| 19 | Watch hours | 6    | 10M       | Done (ultimate fullscreen + twin barrages) |
 
 Implementation will live in `Firmware-PIO/` and trigger off projected stat values between API refreshes.
 

@@ -34,8 +34,8 @@ void milestoneAnimVictoryPulses(MilestoneCtx &ctx, int pulseCount,
                                 uint16_t onMs = 140, uint16_t offMs = 90);
 void milestoneAnimSparkRain(MilestoneCtx &ctx, int frames,
                             uint16_t frameDelayMs = 38);
-void milestoneAnimDualComets(MilestoneCtx &ctx, int passes,
-                             uint16_t frameDelayMs = 28);
+void milestoneAnimFallingComets(MilestoneCtx &ctx, int passes,
+                                uint16_t frameDelayMs = 24);
 void milestoneAnimRockets(MilestoneCtx &ctx, int frames,
                           uint16_t frameDelayMs = 34);
 void milestoneAnimMegablast(MilestoneCtx &ctx, int maxRing, uint16_t fastDelayMs,

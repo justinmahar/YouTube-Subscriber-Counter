@@ -134,27 +134,76 @@ void milestoneAnimSparkRain(MilestoneCtx &ctx, int frames,
   }
 }
 
-void milestoneAnimDualComets(MilestoneCtx &ctx, int passes,
-                             uint16_t frameDelayMs) {
+void milestoneAnimFallingComets(MilestoneCtx &ctx, int passes, uint16_t frameDelayMs) {
+  const int maxComets = 12;
+  int cometCol[maxComets];
+  int cometRow[maxComets];
+  int cometDir[maxComets];
+  bool cometLive[maxComets];
+
   for (int pass = 0; pass < passes; pass++) {
-    for (int head = -3; head <= ctx.width + 3; head++) {
+    int cometCount = min(maxComets, 6 + pass * 2);
+    int spawnSpan = ctx.width + ctx.height * 2;
+    for (int i = 0; i < cometCount; i++) {
+      cometDir[i] = (i + pass) % 2 == 0 ? 1 : -1;
+      int spawnOffset = (i * spawnSpan / cometCount + pass * 5) % spawnSpan;
+      cometCol[i] = cometDir[i] > 0 ? spawnOffset - ctx.height
+                                     : ctx.width + ctx.height - spawnOffset;
+      cometRow[i] = -(i % 5) - 1;
+      cometLive[i] = true;
+    }
+
+    for (int frame = 0; frame < ctx.width + ctx.height + 14; frame++) {
       milestoneClear(ctx);
-      for (int comet = 0; comet < 2; comet++) {
-        int cometHead = comet == 0 ? head : ctx.width - 1 - head + pass;
-        for (int t = 0; t < 4; t++) {
-          int c = cometHead - t;
-          if (c < 0 || c >= ctx.width) {
-            continue;
+      for (int i = 0; i < cometCount; i++) {
+        if (!cometLive[i]) {
+          if (frame % (4 + i) == pass % 2) {
+            cometDir[i] = random(2) == 0 ? 1 : -1;
+            cometCol[i] = cometDir[i] > 0 ? -random(ctx.height + 4)
+                                          : ctx.width - 1 + random(ctx.height + 4);
+            cometRow[i] = -random(4) - 1;
+            cometLive[i] = true;
           }
-          ctx.matrix->setPoint(ctx.cy, ctx.colStart + c, t <= 1);
-          if (t == 0 && ctx.cy > 0) {
-            ctx.matrix->setPoint(ctx.cy - 1, ctx.colStart + c, true);
+          continue;
+        }
+        cometCol[i] += cometDir[i];
+        cometRow[i]++;
+        bool offLeft = cometDir[i] < 0 && cometCol[i] + 5 < 0;
+        bool offRight = cometDir[i] > 0 && cometCol[i] - 5 >= ctx.width;
+        if (cometRow[i] - 5 > ctx.height || offLeft || offRight) {
+          cometLive[i] = false;
+          continue;
+        }
+        for (int t = 0; t < 6; t++) {
+          int c = cometCol[i] - cometDir[i] * t;
+          int r = cometRow[i] - t;
+          if (c >= 0 && c < ctx.width && r >= 0 && r < ctx.height) {
+            ctx.matrix->setPoint(r, ctx.colStart + c, true);
+          }
+          if (t <= 3) {
+            int sideC = c - cometDir[i];
+            if (sideC >= 0 && sideC < ctx.width && r >= 0 && r < ctx.height) {
+              ctx.matrix->setPoint(r, ctx.colStart + sideC, t <= 1 || frame % 2 == 0);
+            }
+          }
+          if (t == 0) {
+            int headRow = r + 1;
+            if (c >= 0 && c < ctx.width && headRow >= 0 && headRow < ctx.height) {
+              ctx.matrix->setPoint(headRow, ctx.colStart + c, true);
+            }
           }
         }
       }
-      milestoneFrameShow(ctx, frameDelayMs, min(15, 10 + pass * 2));
+      milestoneFrameShow(ctx, frameDelayMs, min(15, 8 + pass * 2 + frame / 8));
     }
-    delay(70);
+
+    if (pass + 1 < passes) {
+      milestoneClear(ctx);
+      for (int spark = 0; spark < 14; spark++) {
+        ctx.matrix->setPoint(random(ctx.height), ctx.colStart + random(ctx.width), true);
+      }
+      milestoneFrameShow(ctx, 38, 12);
+    }
   }
 }
 

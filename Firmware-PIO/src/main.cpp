@@ -31,9 +31,9 @@
 
 const bool ENABLE_WOKWI_SETUP = true;
 
-// Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true and pick any animation below.
+// Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true to preview one animation on boot.
 const bool RUN_MILESTONE_TEST_ON_BOOT = true;
-const MilestoneAnimation MILESTONE_BOOT_TEST = MilestoneAnimation::Hours10K;
+const MilestoneAnimation MILESTONE_BOOT_TEST = MilestoneAnimation::Subs1M;
 
 MD_Parola Display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 WiFiClientSecure client;
