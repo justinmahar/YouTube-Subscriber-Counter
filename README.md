@@ -112,11 +112,10 @@ No IDE needed. Click the link below, connect your ESP32 via USB, and hit Install
 
 Requires Chrome or Edge on desktop.
 
-**Option B — Arduino IDE**
+**Option B — PlatformIO**
 
-1. Open `YouTube_Sub_Follower_Counter.ino` in Arduino IDE
-2. Select your ESP32 board and port
-3. Upload
+1. Open the `Firmware-PIO` folder in VS Code or Cursor (PlatformIO extension required)
+2. Build and upload to your ESP32 board
 
 
 
@@ -150,7 +149,7 @@ Leave any field blank when saving and the device keeps the previously stored val
 
 ## OTA Firmware Updates (device already flashed)
 
-1. In Arduino IDE: **Sketch → Export Compiled Binary** — saves a `.bin` file next to your sketch
+1. Build with PlatformIO — the OTA `.bin` is at `Firmware-PIO/.pio/build/esp32dev/firmware.bin`
 2. Open the device IP in your browser
 3. Scroll to **Firmware update**, pick the main firmware `.bin`, click **Upload firmware**
 4. The matrix shows `OTA...` then `Rebooting` — done

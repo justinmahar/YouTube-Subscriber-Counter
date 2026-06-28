@@ -132,7 +132,7 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
     <div>
       <label>Firmware .bin file</label>
       <input type="file" id="binfile" accept=".bin">
-      <div class="hint">Arduino IDE &rarr; Sketch &rarr; Export compiled binary</div>
+      <div class="hint">PlatformIO build output: .pio/build/esp32dev/firmware.bin</div>
     </div>
     <div class="progress-wrap" id="prog-wrap"><div class="progress-bar" id="prog-bar"></div></div>
     <div id="ota-msg" class="msg"></div>
