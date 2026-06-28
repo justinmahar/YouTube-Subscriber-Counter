@@ -532,6 +532,9 @@ bool fetchStats() {
   return true;
 }
 
+static char statDisplayBuffer[20];
+static String lastDisplayedValue = "";
+
 void showProjectedStat() {
   if (!statsLoaded) return;
 
@@ -543,8 +546,24 @@ void showProjectedStat() {
 
   long displayValue = (long)(projected + 0.5);
   String formatted = num_format(displayValue);
+  if (formatted == lastDisplayedValue) return;
+  lastDisplayedValue = formatted;
+
+  formatted.toCharArray(statDisplayBuffer, sizeof(statDisplayBuffer));
   Serial.println(formatted);
-  Display.print(formatted);
+
+  Display.setTextAlignment(PA_RIGHT);
+
+  uint16_t startCol, endCol;
+  Display.getDisplayExtent(startCol, endCol);
+  uint16_t displayWidth = endCol - startCol + 1;
+  uint16_t textWidth = Display.getTextColumns(statDisplayBuffer);
+
+  if (textWidth <= displayWidth) {
+    Display.print(formatted);
+  } else {
+    Display.displayScroll(statDisplayBuffer, PA_RIGHT, PA_SCROLL_LEFT, 80);
+  }
 }
 
 bool startWokwiConfigPortal() {
@@ -686,49 +705,23 @@ void loop() {
       api_lasttime = now;
     }
 
-    if (statsLoaded && selectedStatsCount() > 1 && now - cycle_lasttime >= STAT_CYCLE_MS) {
-      current_stat_index = nextSelectedStatIndex(current_stat_index);
-      showProjectedStat();
-      display_lasttime = now;
-      cycle_lasttime = now;
-    } else if (statsLoaded && now - display_lasttime >= DISPLAY_UPDATE_MS) {
-      showProjectedStat();
-      display_lasttime = now;
+    if (statsLoaded) {
+      Display.displayAnimate();
+
+      if (selectedStatsCount() > 1 && now - cycle_lasttime >= STAT_CYCLE_MS) {
+        current_stat_index = nextSelectedStatIndex(current_stat_index);
+        lastDisplayedValue = "";
+        showProjectedStat();
+        display_lasttime = now;
+        cycle_lasttime = now;
+      } else if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
+        showProjectedStat();
+        display_lasttime = now;
+      }
     }
   }
 }
 
-// ─── Number formatter (original, untouched) ──────────────────────────────────
-// Code from The Swedish Maker
-// https://www.youtube.com/@TheSwedishMaker
 String num_format(long num) {
-  String num_s;
-  long num_original = num;
-  if (num > 99999 && num <= 999999) {
-    num = num / 1000;
-    long fraction = num_original % 1000;
-    String num_fraction = String(fraction);
-    String decimal = num_fraction.substring(0, 1);
-    num_s = String(num) + "." + decimal + "K";
-  } else if (num > 999999) {
-    num = num / 1000000;
-    long fraction = num_original % 1000000;
-    String num_fraction = String(fraction);
-    String decimal = num_fraction.substring(0, 1);
-    if (num_original < 100000000) {
-      num_s = " " + String(num) + "." + decimal + "M";
-    } else {
-      num_s = String(num) + "." + decimal + "M";
-    }
-  } else {
-    int num_l = String(num).length();
-    char num_f[15];
-    int blankDigits = 6 - num_l;
-    for (int i = 0; i < blankDigits; i++) {
-      num_f[i] = ' ';
-    }
-    num_f[blankDigits] = '\0';
-    num_s = num_f + String(num);
-  }
-  return num_s;
+  return String(num);
 }
