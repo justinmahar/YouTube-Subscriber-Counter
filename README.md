@@ -131,7 +131,7 @@ Requires Chrome or Edge on desktop.
 ### 3. Configure via the portal
 
 1. Power on the device — the matrix shows `Setup`
-2. On your phone or laptop, connect to the Wi-Fi network **`YouTubeCounter-Setup`**
+2. On your phone or laptop, connect to the Wi-Fi network shown on the matrix — **`YouTubeCounter-Setup-XXXX`** (unique 4-character suffix per device)
 3. A browser page opens automatically (or navigate to `192.168.4.1`)
 4. Tap **Scan for networks**, pick your Wi-Fi, enter your password
 5. Enter your stats endpoint, select which stats to show, and choose the refresh rate in minutes

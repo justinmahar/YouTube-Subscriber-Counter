@@ -22,7 +22,7 @@
 #define MAX_DEVICES 4
 #define CS_PIN 5
 
-#define AP_SSID "YouTubeCounter-Setup"
+#define AP_SSID_PREFIX "YouTubeCounter-Setup-"
 #define WOKWI_GUEST_SSID "Wokwi-GUEST"
 #define DNS_PORT 53
 #define WIFI_TIMEOUT_MS 15000
@@ -73,6 +73,7 @@ bool configMode = false;
 bool captivePortalActive = false;
 
 String stat_format(double value, int statIndex);
+String getSetupApSsid();
 String html_escape(String value);
 bool fetchStats();
 void showProjectedStat();
@@ -742,12 +743,21 @@ bool startWokwiConfigPortal() {
   return true;
 }
 
+String getSetupApSsid() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char suffix[5];
+  snprintf(suffix, sizeof(suffix), "%02X%02X", mac[4], mac[5]);
+  return String(AP_SSID_PREFIX) + suffix;
+}
+
 void startConfigPortal() {
   configMode = true;
   Display.print("Setup AP");
 
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(AP_SSID);
+  String setupApSsid = getSetupApSsid();
+  WiFi.softAP(setupApSsid.c_str());
   delay(500);
 
   dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
@@ -756,10 +766,14 @@ void startConfigPortal() {
   server.begin();
 
   Serial.println("Config portal started.");
+  Serial.print("AP SSID: ");
+  Serial.println(setupApSsid);
   Serial.print("AP IP: ");
   Serial.println(WiFi.softAPIP());
 
-  Display.print("Setup");
+  Display.displayScroll(setupApSsid.c_str(), PA_LEFT, PA_SCROLL_LEFT, 80);
+  while (!Display.displayAnimate()) { delay(10); }
+  delay(2000);
 }
 
 // ─── Setup ───────────────────────────────────────────────────────────────────
