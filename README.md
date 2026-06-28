@@ -36,14 +36,14 @@ When a stat crosses a milestone threshold, the matrix plays a dedicated animatio
 
 Subscribers and watch hours use these boundaries:
 
-| Tier | Interval | Example values |
-| ---- | -------- | -------------- |
-| 1    | 100      | 100, 200, 300, … |
-| 2    | 1,000    | 1K, 2K, 3K, … |
-| 3    | 10,000   | 10K, 20K, 30K, … |
-| 4    | 100,000  | 100K, 200K, 300K, … |
-| 5    | 1,000,000 | 1M, 2M, 3M, … |
-| 6    | 10,000,000 | 10M, 20M, 30M, … |
+| Tier | Interval   | Example values      |
+| ---- | ---------- | ------------------- |
+| 1    | 100        | 100, 200, 300, …    |
+| 2    | 1,000      | 1K, 2K, 3K, …       |
+| 3    | 10,000     | 10K, 20K, 30K, …    |
+| 4    | 100,000    | 100K, 200K, 300K, … |
+| 5    | 1,000,000  | 1M, 2M, 3M, …       |
+| 6    | 10,000,000 | 10M, 20M, 30M, …    |
 
 **Views** use the same boundaries for tiers 1–6 but animations start at tier 3 (+10K). Crossings at +100 and +1K views do not play a milestone animation. Views also have an apex tier at **+100M** (100M, 200M, …) — subscribers and watch hours do not.
 
@@ -51,27 +51,27 @@ Tier 1 fires on every 100; higher tiers fire on their own boundaries (e.g. 1,000
 
 ### Animation inventory
 
-| # | Metric       | Tier | Threshold | Status |
-| - | ------------ | ---- | --------- | ------ |
-| 1 | Subscribers  | 1    | 100       | Done (border chase) |
-| 2 | Subscribers  | 2    | 1K        | Done (ripple + rain) |
-| 3 | Subscribers  | 3    | 10K       | Done (epic multi-phase) |
-| 4 | Subscribers  | 4    | 100K      | Done (fireworks + explosions) |
-| 5 | Subscribers  | 5    | 1M        | Done (trinity blast + firestorm) |
-| 6 | Subscribers  | 6    | 10M       | Done (ultimate finale) |
-| 7 | Views        | 1    | 100       | — (no animation) |
-| 8 | Views        | 2    | 1K        | — (no animation) |
-| 9 | Views        | 3    | 10K       | Done (two eyes open + blink) |
-| 10 | Views       | 4    | 100K      | Done (dilated eyes + view rain) |
-| 11 | Views       | 5    | 1M        | Done (crowd eyes → giant stare + deluge) |
-| 12 | Views       | 6    | 10M       | Done (gravity well + nova grid + plasma) |
-| 13 | Views       | 7    | 100M      | Done (twin singularity + omniscience + hypernova) |
-| 14 | Watch hours | 1    | 100       | Done (hourglass drains top → bottom) |
-| 15 | Watch hours | 2    | 1K        | Done (sand stream + tick sweep + ripple) |
-| 16 | Watch hours | 3    | 10K       | Done (twin hourglasses build, sync drain, blasts) |
-| 17 | Watch hours | 4    | 100K      | Done (triple hourglasses + megablast finale) |
-| 18 | Watch hours | 5    | 1M        | Done (triple drain + firework barrage) |
-| 19 | Watch hours | 6    | 10M       | Done (ultimate fullscreen + twin barrages) |
+| #   | Metric      | Tier | Threshold | Status                                            |
+| --- | ----------- | ---- | --------- | ------------------------------------------------- |
+| 1   | Subscribers | 1    | 100       | Done (border chase)                               |
+| 2   | Subscribers | 2    | 1K        | Done (ripple + rain)                              |
+| 3   | Subscribers | 3    | 10K       | Done (epic multi-phase)                           |
+| 4   | Subscribers | 4    | 100K      | Done (fireworks + explosions)                     |
+| 5   | Subscribers | 5    | 1M        | Done (trinity blast + firestorm)                  |
+| 6   | Subscribers | 6    | 10M       | Done (ultimate finale)                            |
+| 7   | Views       | 1    | 100       | — (no animation)                                  |
+| 8   | Views       | 2    | 1K        | — (no animation)                                  |
+| 9   | Views       | 3    | 10K       | Done (two eyes open + blink)                      |
+| 10  | Views       | 4    | 100K      | Done (dilated eyes + view rain)                   |
+| 11  | Views       | 5    | 1M        | Done (crowd eyes → giant stare + deluge)          |
+| 12  | Views       | 6    | 10M       | Done (gravity well + nova grid + plasma)          |
+| 13  | Views       | 7    | 100M      | Done (twin singularity + omniscience + hypernova) |
+| 14  | Watch hours | 1    | 100       | Done (hourglass drains top → bottom)              |
+| 15  | Watch hours | 2    | 1K        | Done (sand stream + tick sweep + ripple)          |
+| 16  | Watch hours | 3    | 10K       | Done (twin hourglasses build, sync drain, blasts) |
+| 17  | Watch hours | 4    | 100K      | Done (triple hourglasses + megablast finale)      |
+| 18  | Watch hours | 5    | 1M        | Done (triple drain + firework barrage)            |
+| 19  | Watch hours | 6    | 10M       | Done (ultimate fullscreen + twin barrages)        |
 
 Implementation will live in `Firmware-PIO/` and trigger off projected stat values between API refreshes.
 
