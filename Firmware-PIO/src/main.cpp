@@ -31,15 +31,13 @@
 
 const bool ENABLE_WOKWI_SETUP = true;
 
-// Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true to preview animations on boot.
+// Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true to preview
+// animations on boot.
 const bool RUN_MILESTONE_TEST_ON_BOOT = false;
 static const MilestoneAnimation HOURS_BOOT_PREVIEW[] = {
-    MilestoneAnimation::Hours100,
-    MilestoneAnimation::Hours1K,
-    MilestoneAnimation::Hours10K,
-    MilestoneAnimation::Hours100K,
-    MilestoneAnimation::Hours1M,
-    MilestoneAnimation::Hours10M,
+    MilestoneAnimation::Hours100, MilestoneAnimation::Hours1K,
+    MilestoneAnimation::Hours10K, MilestoneAnimation::Hours100K,
+    MilestoneAnimation::Hours1M,  MilestoneAnimation::Hours10M,
 };
 
 MD_Parola Display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
@@ -826,9 +824,9 @@ static bool crossedInterval(double previousValue, double currentValue,
   return floor(previousValue / interval) < floor(currentValue / interval);
 }
 
-static bool findCrossedMilestoneAnimation(
-    int statIndex, double previousValue, double currentValue,
-    MilestoneAnimation &animation) {
+static bool findCrossedMilestoneAnimation(int statIndex, double previousValue,
+                                          double currentValue,
+                                          MilestoneAnimation &animation) {
   if (!isfinite(previousValue) || !isfinite(currentValue) ||
       currentValue <= previousValue) {
     return false;
