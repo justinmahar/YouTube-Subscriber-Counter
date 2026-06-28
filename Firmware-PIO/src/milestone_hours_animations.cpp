@@ -13,39 +13,39 @@ static void runHoursTier(MD_Parola &display, void (*animation)(MD_Parola &),
   milestoneCleanupDisplay(display);
 }
 
-// Connected hourglass frame (offset from cx, row).
-static const struct {
-  int8_t row;
-  int8_t dx;
-} HOURS_FRAME[] = {
-    {0, -2}, {0, -1}, {0, 0}, {0, 1}, {0, 2},
-    {1, -3}, {1, -2}, {1, 2}, {1, 3},
-    {2, -3}, {2, 3},
-    {3, -3}, {3, -2}, {3, -1}, {3, 1}, {3, 2}, {3, 3},
-    {4, -3}, {4, -2}, {4, -1}, {4, 1}, {4, 2}, {4, 3},
-    {5, -3}, {5, -2}, {5, 2}, {5, 3},
-    {6, -3}, {6, 3},
-    {7, -2}, {7, -1}, {7, 0}, {7, 1}, {7, 2},
-};
-static const int HOURS_FRAME_COUNT = sizeof(HOURS_FRAME) / sizeof(HOURS_FRAME[0]);
+// Two triangles meeting at the pinch (row 3). Half-width per row, rows 0–7.
+static const int8_t HOURS_GLASS_HW[] = {3, 2, 1, 0, 1, 2, 3, 3};
 
-static const int8_t HOURS_TOP_SAND_R[] = {2, 2, 2, 2, 2, 1, 1, 1};
-static const int8_t HOURS_TOP_SAND_DX[] = {0, -1, 1, -2, 2, 0, -1, 1};
-static const int8_t HOURS_BOT_SAND_R[] = {6, 6, 6, 6, 6, 5, 5, 5};
-static const int8_t HOURS_BOT_SAND_DX[] = {0, -1, 1, -2, 2, 0, -1, 1};
+static const int8_t HOURS_TOP_SAND_R[] = {0, 0, 0, 0, 0, 1, 1, 1};
+static const int8_t HOURS_TOP_SAND_DX[] = {-2, -1, 0, 1, 2, -1, 0, 1};
+static const int8_t HOURS_BOT_SAND_R[] = {7, 7, 7, 7, 7, 6, 6, 6};
+static const int8_t HOURS_BOT_SAND_DX[] = {-2, -1, 0, 1, 2, -1, 0, 1};
 static const int HOURS_SAND_COUNT = 8;
 
-static void hoursDrawHourglassFrame(MilestoneCtx &ctx, int revealThroughRow) {
-  for (int i = 0; i < HOURS_FRAME_COUNT; i++) {
-    if (HOURS_FRAME[i].row > revealThroughRow) {
+static void hoursDrawHourglassFrameAt(MilestoneCtx &ctx, int ox, int revealThroughRow) {
+  for (int row = 0; row < ctx.height && row <= revealThroughRow; row++) {
+    int hw = HOURS_GLASS_HW[row];
+    if (hw == 0) {
+      if (ox >= 0 && ox < ctx.width) {
+        ctx.matrix->setPoint(row, ctx.colStart + ox, true);
+      }
       continue;
     }
-    int row = HOURS_FRAME[i].row;
-    int col = ctx.cx + HOURS_FRAME[i].dx;
-    if (col >= 0 && col < ctx.width && row >= 0 && row < ctx.height) {
-      ctx.matrix->setPoint(row, ctx.colStart + col, true);
+    for (int c = ox - hw; c <= ox + hw; c++) {
+      if (c < 0 || c >= ctx.width) {
+        continue;
+      }
+      bool cap = (row == 0 || row == 7);
+      bool edge = (c == ox - hw || c == ox + hw);
+      if (cap || edge) {
+        ctx.matrix->setPoint(row, ctx.colStart + c, true);
+      }
     }
   }
+}
+
+static void hoursDrawHourglassFrame(MilestoneCtx &ctx, int revealThroughRow) {
+  hoursDrawHourglassFrameAt(ctx, ctx.cx, revealThroughRow);
 }
 
 static void hoursDrawClockTicks(MilestoneCtx &ctx) {
@@ -97,19 +97,6 @@ static void hoursDrawFilledHourglass(MilestoneCtx &ctx, int topRemaining, int bo
   hoursDrawClockTicks(ctx);
   hoursDrawTopSand(ctx, topRemaining);
   hoursDrawBottomSand(ctx, bottomCount);
-}
-
-static void hoursDrawHourglassFrameAt(MilestoneCtx &ctx, int ox, int revealThroughRow) {
-  for (int i = 0; i < HOURS_FRAME_COUNT; i++) {
-    if (HOURS_FRAME[i].row > revealThroughRow) {
-      continue;
-    }
-    int row = HOURS_FRAME[i].row;
-    int col = ox + HOURS_FRAME[i].dx;
-    if (col >= 0 && col < ctx.width && row >= 0 && row < ctx.height) {
-      ctx.matrix->setPoint(row, ctx.colStart + col, true);
-    }
-  }
 }
 
 static void hoursDrawTopSandAt(MilestoneCtx &ctx, int ox, int remaining) {
@@ -168,16 +155,16 @@ static void hoursDrawClockRing(MilestoneCtx &ctx, int ring) {
 }
 
 static void hoursAnimDualSandAvalanche(MilestoneCtx &ctx, int leftOx, int rightOx) {
-  const int8_t fallRows[] = {2, 3, 4, 5, 6};
-  const int fallSteps = 5;
+  const int8_t fallRows[] = {1, 2, 3, 4, 5, 6};
+  const int fallSteps = 6;
   for (int batch = 0; batch < HOURS_SAND_COUNT / 2; batch++) {
     int grainsDone = batch * 2;
     for (int step = 0; step < fallSteps; step++) {
       milestoneClear(ctx);
       hoursDrawDualHourglasses(ctx, leftOx, rightOx, HOURS_SAND_COUNT - grainsDone - 2,
                                grainsDone);
-      hoursDrawSandStreamAt(ctx, leftOx, fallRows[step], max(2, fallRows[step] - 2));
-      hoursDrawSandStreamAt(ctx, rightOx, fallRows[step], max(2, fallRows[step] - 2));
+      hoursDrawSandStreamAt(ctx, leftOx, fallRows[step], max(1, fallRows[step] - 2));
+      hoursDrawSandStreamAt(ctx, rightOx, fallRows[step], max(1, fallRows[step] - 2));
       ctx.matrix->setPoint(3, ctx.colStart + ctx.cx, step >= 2);
       ctx.matrix->setPoint(4, ctx.colStart + ctx.cx, step >= 3);
       milestoneFrameShow(ctx, 22, min(15, 11 + step));
@@ -329,8 +316,8 @@ static void hoursAnimTier100(MD_Parola &display) {
   hoursDrawTopSand(ctx, HOURS_SAND_COUNT);
   milestoneFrameShow(ctx, 120, 14);
 
-  const int8_t fallRows[] = {2, 3, 4, 5, 6};
-  const int fallSteps = 5;
+  const int8_t fallRows[] = {1, 2, 3, 4, 5, 6};
+  const int fallSteps = 6;
   for (int grain = 0; grain < HOURS_SAND_COUNT; grain++) {
     for (int step = 0; step < fallSteps; step++) {
       milestoneClear(ctx);
@@ -407,14 +394,14 @@ static void hoursAnimTier1K(MD_Parola &display) {
     milestoneFrameShow(ctx, tick == 3 ? 80 : 55, tick % 2 == 0 ? 14 : 11);
   }
 
-  const int8_t fallRows[] = {2, 3, 4, 5, 6};
-  const int fallSteps = 5;
+  const int8_t fallRows[] = {1, 2, 3, 4, 5, 6};
+  const int fallSteps = 6;
   for (int batch = 0; batch < HOURS_SAND_COUNT / 2; batch++) {
     int grainsDone = batch * 2;
     for (int step = 0; step < fallSteps; step++) {
       milestoneClear(ctx);
       hoursDrawFilledHourglass(ctx, HOURS_SAND_COUNT - grainsDone - 2, grainsDone);
-      hoursDrawSandStream(ctx, fallRows[step], max(2, fallRows[step] - 2));
+      hoursDrawSandStream(ctx, fallRows[step], max(1, fallRows[step] - 2));
       if (step >= 2 && step <= 3) {
         ctx.matrix->setPoint(3, ctx.colStart + ctx.cx - 1, step == 2);
         ctx.matrix->setPoint(3, ctx.colStart + ctx.cx + 1, step == 3);
