@@ -85,11 +85,18 @@ static void hoursDrawBottomSand(MilestoneCtx &ctx, int count) {
   }
 }
 
-static void hoursDrawFallingGrain(MilestoneCtx &ctx, int row, int trailRow) {
-  ctx.matrix->setPoint(row, ctx.colStart + ctx.cx, true);
-  if (trailRow >= 0 && trailRow < ctx.height && trailRow != row) {
-    ctx.matrix->setPoint(trailRow, ctx.colStart + ctx.cx, true);
+static void hoursDrawFallingGrainAt(MilestoneCtx &ctx, int ox, int row, int trailRow) {
+  if (ox < 0 || ox >= ctx.width) {
+    return;
   }
+  ctx.matrix->setPoint(row, ctx.colStart + ox, true);
+  if (trailRow >= 0 && trailRow < ctx.height && trailRow != row) {
+    ctx.matrix->setPoint(trailRow, ctx.colStart + ox, true);
+  }
+}
+
+static void hoursDrawFallingGrain(MilestoneCtx &ctx, int row, int trailRow) {
+  hoursDrawFallingGrainAt(ctx, ctx.cx, row, trailRow);
 }
 
 static void hoursDrawFilledHourglass(MilestoneCtx &ctx, int topRemaining, int bottomCount) {
@@ -130,149 +137,74 @@ static void hoursDrawDualHourglasses(MilestoneCtx &ctx, int leftOx, int rightOx,
   hoursDrawHourglassFrameAt(ctx, rightOx, ctx.height - 1);
 }
 
-static void hoursDrawSandStreamAt(MilestoneCtx &ctx, int ox, int headRow, int tailRow) {
-  for (int dc = -1; dc <= 1; dc++) {
-    int col = ox + dc;
-    if (col < 0 || col >= ctx.width) {
-      continue;
-    }
-    for (int row = tailRow; row <= headRow; row++) {
-      if (row >= 0 && row < ctx.height && (row == headRow || dc == 0)) {
-        ctx.matrix->setPoint(row, ctx.colStart + col, true);
-      }
-    }
+static void hoursAnimDualBuild(MilestoneCtx &ctx, int leftOx, int rightOx) {
+  for (int row = 0; row < ctx.height; row++) {
+    milestoneClear(ctx);
+    hoursDrawHourglassFrameAt(ctx, leftOx, row);
+    hoursDrawHourglassFrameAt(ctx, rightOx, row);
+    milestoneFrameShow(ctx, 40, min(15, 8 + row));
   }
 }
 
-static void hoursDrawClockRing(MilestoneCtx &ctx, int ring) {
-  for (int c = 0; c < ctx.width; c++) {
-    for (int row = 0; row < ctx.height; row++) {
-      if (abs(c - ctx.cx) + abs(row - ctx.cy) == ring && (c + row + ring) % 2 == 0) {
-        ctx.matrix->setPoint(row, ctx.colStart + c, true);
-      }
-    }
+static void hoursAnimDualFill(MilestoneCtx &ctx, int leftOx, int rightOx) {
+  for (int top = 1; top <= HOURS_SAND_COUNT; top++) {
+    milestoneClear(ctx);
+    hoursDrawDualHourglasses(ctx, leftOx, rightOx, top, 0);
+    milestoneFrameShow(ctx, top == HOURS_SAND_COUNT ? 100 : 38, min(15, 8 + top));
   }
 }
 
-static void hoursAnimMegablastWithHourglasses(MilestoneCtx &ctx, int leftOx, int rightOx,
-                                              int maxRing, uint16_t fastDelayMs,
-                                              uint16_t slowDelayMs, bool flashAfter) {
-  for (int ring = 0; ring <= maxRing; ring++) {
-    milestoneClear(ctx);
-    hoursDrawClockRing(ctx, 8);
-    milestoneDrawExplosionRing(ctx, ctx.cx, ctx.cy, ring);
-    if (ring > 2) {
-      milestoneDrawExplosionRing(ctx, ctx.cx, ctx.cy, ring - 2);
-    }
-    hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-    milestoneFrameShow(ctx, ring < maxRing / 2 ? fastDelayMs : slowDelayMs,
-                       min(15, 6 + ring));
-  }
-
-  if (flashAfter) {
-    milestoneClear(ctx);
-    milestoneFillAll(ctx);
-    milestoneFrameShow(ctx, 90, 15);
-    milestoneClear(ctx);
-    milestoneFrameShow(ctx, 50, 5);
-  }
-}
-
-static void hoursAnimDualSandAvalanche(MilestoneCtx &ctx, int leftOx, int rightOx) {
+static void hoursAnimDualDrain(MilestoneCtx &ctx, int leftOx, int rightOx) {
   const int8_t fallRows[] = {1, 2, 3, 4, 5, 6};
   const int fallSteps = 6;
-  for (int batch = 0; batch < HOURS_SAND_COUNT / 2; batch++) {
-    int grainsDone = batch * 2;
+  for (int grain = 0; grain < HOURS_SAND_COUNT; grain++) {
     for (int step = 0; step < fallSteps; step++) {
       milestoneClear(ctx);
-      hoursDrawSandStreamAt(ctx, leftOx, fallRows[step], max(1, fallRows[step] - 2));
-      hoursDrawSandStreamAt(ctx, rightOx, fallRows[step], max(1, fallRows[step] - 2));
-      if (step >= 2) {
-        ctx.matrix->setPoint(3, ctx.colStart + ctx.cx, true);
-      }
-      if (step >= 3) {
-        ctx.matrix->setPoint(4, ctx.colStart + ctx.cx, true);
-      }
-      hoursDrawDualHourglasses(ctx, leftOx, rightOx, HOURS_SAND_COUNT - grainsDone - 2,
-                               grainsDone);
-      milestoneFrameShow(ctx, 22, min(15, 11 + step));
+      hoursDrawTopSandAt(ctx, leftOx, HOURS_SAND_COUNT - grain - 1);
+      hoursDrawTopSandAt(ctx, rightOx, HOURS_SAND_COUNT - grain - 1);
+      hoursDrawBottomSandAt(ctx, leftOx, grain);
+      hoursDrawBottomSandAt(ctx, rightOx, grain);
+      hoursDrawFallingGrainAt(ctx, leftOx, fallRows[step],
+                              step > 0 ? fallRows[step - 1] : -1);
+      hoursDrawFallingGrainAt(ctx, rightOx, fallRows[step],
+                              step > 0 ? fallRows[step - 1] : -1);
+      hoursDrawHourglassFrameAt(ctx, leftOx, ctx.height - 1);
+      hoursDrawHourglassFrameAt(ctx, rightOx, ctx.height - 1);
+      milestoneFrameShow(ctx, step < 2 ? 36 : 28, min(15, 10 + step));
     }
-    grainsDone += 2;
     milestoneClear(ctx);
-    hoursDrawDualHourglasses(ctx, leftOx, rightOx, HOURS_SAND_COUNT - grainsDone, grainsDone);
-    milestoneFrameShow(ctx, 18, 13);
+    hoursDrawDualHourglasses(ctx, leftOx, rightOx, HOURS_SAND_COUNT - grain - 1,
+                             grain + 1);
+    milestoneFrameShow(ctx, 22, 12);
   }
 }
 
-static void hoursAnimChronoFireworks(MilestoneCtx &ctx, int leftOx, int rightOx) {
-  const int originsX[] = {leftOx, rightOx, ctx.cx, ctx.width / 5, 4 * ctx.width / 5,
-                          ctx.cx, leftOx, rightOx};
-  const int originsY[] = {2, 2, 0, 4, 4, 7, 5, 5};
-  for (int wave = 0; wave < 3; wave++) {
-    for (int frame = 0; frame < 14; frame++) {
-      milestoneClear(ctx);
-      hoursDrawClockRing(ctx, 8);
-      for (int b = 0; b < 5 + wave; b++) {
-        int idx = (b + wave * 2) % 8;
-        if ((frame + b) % 3 != 0) {
-          milestoneDrawFireworkBurst(ctx, originsX[idx], originsY[idx], frame + b, 9,
-                                     0.55f + wave * 0.05f);
-        }
-      }
-      hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-      milestoneFrameShow(ctx, 30, min(15, 10 + frame / 4));
-    }
-    delay(45);
-  }
-}
+static void hoursAnimDualFinale(MilestoneCtx &ctx, int leftOx, int rightOx) {
+  milestoneClear(ctx);
+  hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
+  milestoneFrameShow(ctx, 120, 14);
 
-static void hoursAnimChimeChain(MilestoneCtx &ctx, int leftOx, int rightOx) {
-  const int chimeX[] = {2, leftOx - 2, leftOx, ctx.cx, rightOx, ctx.width - 3,
-                        ctx.width - 2};
-  const int chimeY[] = {1, 1, 0, 0, 0, 1, 1};
-  for (int site = 0; site < 7; site++) {
-    for (int ring = 0; ring <= 7; ring++) {
-      milestoneClear(ctx);
-      hoursDrawClockRing(ctx, 8);
-      for (int s = 0; s <= site; s++) {
-        int drawRing = ring - (site - s) * 2;
-        if (drawRing >= 0) {
-          milestoneDrawExplosionRing(ctx, chimeX[s], chimeY[s], drawRing);
-        }
-      }
-      milestoneDrawFireworkBurst(ctx, chimeX[site], chimeY[site], ring, 7, 0.42f);
-      hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-      milestoneFrameShow(ctx, 22, min(15, 8 + ring));
-    }
-    delay(18);
-  }
-}
-
-static void hoursAnimSandGeysers(MilestoneCtx &ctx, int leftOx, int rightOx) {
-  const int dirs[8][2] = {{0, -1}, {1, -1}, {1, 0}, {1, 1},
-                          {0, 1},  {-1, 1}, {-1, 0}, {-1, -1}};
-  for (int burst = 0; burst <= 10; burst++) {
+  for (int ring = 1; ring <= 4; ring++) {
     milestoneClear(ctx);
-    for (int g = 0; g < 2; g++) {
-      int ox = g == 0 ? leftOx : rightOx;
-      for (int d = 0; d < 8; d++) {
-        for (int len = 1; len <= burst; len++) {
-          int c = ox + dirs[d][0] * len;
-          int row = 4 + dirs[d][1] * len;
-          if (c >= 0 && c < ctx.width && row >= 0 && row < ctx.height && len >= burst - 1) {
-            ctx.matrix->setPoint(row, ctx.colStart + c, true);
-          }
-        }
-      }
-    }
+    milestoneDrawExplosionRing(ctx, leftOx, ctx.cy, ring);
+    milestoneDrawExplosionRing(ctx, rightOx, ctx.cy, ring);
     hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-    milestoneFrameShow(ctx, burst < 6 ? 24 : 32, min(15, 7 + burst / 2));
+    milestoneFrameShow(ctx, 44, min(15, 9 + ring));
   }
+
+  for (int pulse = 0; pulse < 3; pulse++) {
+    milestoneClear(ctx);
+    hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
+    milestoneFrameShow(ctx, pulse == 2 ? 90 : 60, pulse % 2 == 0 ? 15 : 11);
+    if (pulse < 2) {
+      milestoneClear(ctx);
+      milestoneFrameShow(ctx, 30, 5);
+    }
+  }
+
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 40, 15);
-  milestoneClear(ctx);
-  milestoneFrameShow(ctx, 25, 5);
+  milestoneFrameShow(ctx, 70, 15);
 }
 
 static void hoursAnimTickSweep(MilestoneCtx &ctx) {
@@ -512,78 +444,19 @@ static void hoursAnimTier1K(MD_Parola &display) {
   milestoneEffectEnd(ctx);
 }
 
-// +10K hours — dual hourglasses, clock ring, sand avalanche, time tsunami, blasts.
+// +10K hours — twin hourglasses build, fill, drain in sync, celebration.
 static void hoursAnimTier10K(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
   milestoneEffectBegin(ctx, 14);
 
-  milestoneAnimSlowRingBuild(ctx, 10, 50);
-  delay(80);
-
-  for (int ring = 7; ring <= 9; ring++) {
-    milestoneClear(ctx);
-    hoursDrawClockRing(ctx, ring);
-    milestoneFrameShow(ctx, 40, min(15, 10 + ring));
-  }
-
   const int leftOx = ctx.cx - 9;
   const int rightOx = ctx.cx + 9;
 
-  for (int row = 0; row < ctx.height; row++) {
-    milestoneClear(ctx);
-    hoursDrawClockRing(ctx, 8);
-    hoursDrawHourglassFrameAt(ctx, leftOx, row);
-    hoursDrawHourglassFrameAt(ctx, rightOx, row);
-    milestoneFrameShow(ctx, 38, min(15, 9 + row));
-  }
-
-  for (int top = 4; top <= HOURS_SAND_COUNT; top += 4) {
-    milestoneClear(ctx);
-    hoursDrawClockRing(ctx, 8);
-    hoursDrawDualHourglasses(ctx, leftOx, rightOx, top, 0);
-    milestoneFrameShow(ctx, 32, min(15, 10 + top / 2));
-  }
-
-  milestoneClear(ctx);
-  hoursDrawClockRing(ctx, 8);
-  hoursDrawDualHourglasses(ctx, leftOx, rightOx, HOURS_SAND_COUNT, 0);
-  milestoneFrameShow(ctx, 90, 14);
-
-  hoursAnimDualSandAvalanche(ctx, leftOx, rightOx);
-
-  milestoneClear(ctx);
-  hoursDrawClockRing(ctx, 8);
-  hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-  milestoneFrameShow(ctx, 100, 14);
-
-  for (int pulse = 0; pulse < 3; pulse++) {
-    milestoneClear(ctx);
-    hoursDrawClockRing(ctx, 8);
-    milestoneDrawExplosionRing(ctx, leftOx, ctx.cy, pulse + 2);
-    milestoneDrawExplosionRing(ctx, rightOx, ctx.cy, pulse + 2);
-    milestoneDrawExplosionRing(ctx, ctx.cx, ctx.cy, pulse + 1);
-    hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-    milestoneFrameShow(ctx, 48, min(15, 10 + pulse * 2));
-  }
-
-  hoursAnimSandGeysers(ctx, leftOx, rightOx);
-  hoursAnimChronoFireworks(ctx, leftOx, rightOx);
-  hoursAnimChimeChain(ctx, leftOx, rightOx);
-
-  hoursAnimMegablastWithHourglasses(ctx, leftOx, rightOx, 11, 24, 34, true);
-
-  for (int pulse = 0; pulse < 3; pulse++) {
-    milestoneClear(ctx);
-    hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-    hoursDrawClockRing(ctx, 8);
-    milestoneFrameShow(ctx, pulse == 2 ? 95 : 65, pulse % 2 == 0 ? 15 : 11);
-  }
-
-  milestoneClear(ctx);
-  milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 100, 15);
-  milestoneAnimInwardCollapse(ctx, 36);
+  hoursAnimDualBuild(ctx, leftOx, rightOx);
+  hoursAnimDualFill(ctx, leftOx, rightOx);
+  hoursAnimDualDrain(ctx, leftOx, rightOx);
+  hoursAnimDualFinale(ctx, leftOx, rightOx);
   milestoneEffectEnd(ctx);
 }
 
