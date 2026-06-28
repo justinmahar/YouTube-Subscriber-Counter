@@ -71,9 +71,13 @@ uint8_t saved_stats = STAT_SUBSCRIBERS;
 unsigned int saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
 bool configMode = false;
 bool captivePortalActive = false;
+char setupMacSuffix[5] = "";
+char setupScrollBuffer[48] = "";
 
 String stat_format(double value, int statIndex);
 String getSetupApSsid();
+void initSetupDisplay();
+void updateSetupDisplay();
 String html_escape(String value);
 bool fetchStats();
 void showProjectedStat();
@@ -739,21 +743,36 @@ bool startWokwiConfigPortal() {
   Serial.print("ESP IP: ");
   Serial.println(WiFi.localIP());
 
-  Display.print("Setup");
+  initSetupDisplay();
   return true;
 }
 
-String getSetupApSsid() {
+void getSetupMacSuffix(char *suffix, size_t size) {
   uint8_t mac[6];
   WiFi.macAddress(mac);
+  snprintf(suffix, size, "%02X%02X", mac[4], mac[5]);
+}
+
+String getSetupApSsid() {
   char suffix[5];
-  snprintf(suffix, sizeof(suffix), "%02X%02X", mac[4], mac[5]);
+  getSetupMacSuffix(suffix, sizeof(suffix));
   return String(AP_SSID_PREFIX) + suffix;
+}
+
+void initSetupDisplay() {
+  getSetupMacSuffix(setupMacSuffix, sizeof(setupMacSuffix));
+  snprintf(setupScrollBuffer, sizeof(setupScrollBuffer), "Connect to hotspot %s%s", AP_SSID_PREFIX, setupMacSuffix);
+  Display.displayScroll(setupScrollBuffer, PA_LEFT, PA_SCROLL_LEFT, 80);
+}
+
+void updateSetupDisplay() {
+  if (Display.displayAnimate()) {
+    Display.displayScroll(setupScrollBuffer, PA_LEFT, PA_SCROLL_LEFT, 80);
+  }
 }
 
 void startConfigPortal() {
   configMode = true;
-  Display.print("Setup AP");
 
   WiFi.mode(WIFI_AP);
   String setupApSsid = getSetupApSsid();
@@ -771,9 +790,7 @@ void startConfigPortal() {
   Serial.print("AP IP: ");
   Serial.println(WiFi.softAPIP());
 
-  Display.displayScroll(setupApSsid.c_str(), PA_LEFT, PA_SCROLL_LEFT, 80);
-  while (!Display.displayAnimate()) { delay(10); }
-  delay(2000);
+  initSetupDisplay();
 }
 
 // ─── Setup ───────────────────────────────────────────────────────────────────
@@ -845,6 +862,7 @@ void loop() {
       dnsServer.processNextRequest();
     }
     server.handleClient();
+    updateSetupDisplay();
     return;
   }
 
