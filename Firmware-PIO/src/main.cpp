@@ -30,7 +30,7 @@
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
 const bool ENABLE_WOKWI_SETUP = true;
-const bool DISABLE_INTRO_AND_WIFI_INFO = false;
+const bool DISABLE_INTRO_AND_WIFI_INFO = true;
 
 // Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true to preview
 // animations on boot.
@@ -96,6 +96,7 @@ char setupMacSuffix[5] = "";
 char setupScrollBuffer[48] = "";
 
 String stat_format(double value, int statIndex);
+String getStatDisplayText(int statIndex, const String &formattedValue);
 String getSetupApSsid();
 void runBootAnimation();
 void initSetupDisplay();
@@ -1308,8 +1309,8 @@ static bool shouldHideStatExitPixel(uint8_t row, uint16_t localCol) {
            localCol >= statExitFrameWidth - amount;
   case EXIT_CURTAIN:
     amount = (uint16_t)statExitStep * STAT_EXIT_CURTAIN_COLUMNS_PER_FRAME;
-    return amount >= (statExitFrameWidth + 1) / 2 ||
-           localCol < amount || localCol >= statExitFrameWidth - amount;
+    return amount >= (statExitFrameWidth + 1) / 2 || localCol < amount ||
+           localCol >= statExitFrameWidth - amount;
   case EXIT_CENTER_BURST: {
     int16_t center2 = (int16_t)statExitFrameWidth - 1;
     int16_t distance2 = abs((int16_t)(localCol * 2) - center2);
@@ -1463,7 +1464,8 @@ void startStatScrollIn() {
   double projected =
       getProjectedStatValue(current_stat_index, currentUnixTimestamp);
   String formatted = stat_format(projected, current_stat_index);
-  formatted.toCharArray(statDisplayBuffer, sizeof(statDisplayBuffer));
+  String displayText = getStatDisplayText(current_stat_index, formatted);
+  displayText.toCharArray(statDisplayBuffer, sizeof(statDisplayBuffer));
 
   uint16_t startCol, endCol;
   Display.getDisplayExtent(startCol, endCol);
@@ -1475,7 +1477,7 @@ void startStatScrollIn() {
     statDisplayScrolling = true;
     Display.displayScroll(statDisplayBuffer, PA_RIGHT, PA_SCROLL_LEFT,
                           saved_scroll_speed_ms);
-    lastDisplayedValue = formatted;
+    lastDisplayedValue = displayText;
     cycle_lasttime = millis();
     Serial.println(formatted);
     return;
@@ -1581,13 +1583,14 @@ void showProjectedStat() {
       getProjectedStatValue(current_stat_index, currentUnixTimestamp);
 
   String formatted = stat_format(projected, current_stat_index);
-  if (formatted == lastDisplayedValue)
+  String displayText = getStatDisplayText(current_stat_index, formatted);
+  if (displayText == lastDisplayedValue)
     return;
 
   String previousDisplayedValue = lastDisplayedValue;
   bool wasDisplayScrolling = statDisplayScrolling;
-  formatted.toCharArray(statDisplayBuffer, sizeof(statDisplayBuffer));
-  Serial.println(formatted);
+  displayText.toCharArray(statDisplayBuffer, sizeof(statDisplayBuffer));
+  Serial.println(displayText);
 
   uint16_t startCol, endCol;
   Display.getDisplayExtent(startCol, endCol);
@@ -1608,7 +1611,7 @@ void showProjectedStat() {
     Display.displayScroll(statDisplayBuffer, PA_RIGHT, PA_SCROLL_LEFT,
                           saved_scroll_speed_ms);
   }
-  lastDisplayedValue = formatted;
+  lastDisplayedValue = displayText;
 }
 
 bool startWokwiConfigPortal() {
@@ -2020,6 +2023,13 @@ void loop() {
       }
     }
   }
+}
+
+String getStatDisplayText(int statIndex, const String &formattedValue) {
+  if (statIndex == STAT_INDEX_SUBSCRIBERS) {
+    return String("* ") + formattedValue;
+  }
+  return formattedValue;
 }
 
 String stat_format(double value, int statIndex) {
