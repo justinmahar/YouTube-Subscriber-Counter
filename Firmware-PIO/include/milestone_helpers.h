@@ -17,7 +17,9 @@ struct MilestoneCtx {
 };
 
 void milestoneCtxInit(MD_Parola &display, MilestoneCtx &ctx);
-void animationBrightnessConfigure(bool boostEnabled, uint8_t boostAmount);
+void animationBrightnessConfigure(uint8_t baselineIntensity, bool boostEnabled,
+                                  uint8_t boostAmount);
+uint8_t displayBaselineIntensity();
 uint8_t animationDisplayIntensity(uint8_t normalizedIntensity);
 void milestoneEffectBegin(MilestoneCtx &ctx, uint8_t intensity = 0);
 void milestoneEffectEnd(MilestoneCtx &ctx);

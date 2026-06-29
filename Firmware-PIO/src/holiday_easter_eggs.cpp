@@ -344,7 +344,7 @@ void holidayScrollMessage(MD_Parola &display, const char *message) {
   matrix->clear();
   matrix->update();
   display.displayClear();
-  display.setIntensity(0);
+  display.setIntensity(displayBaselineIntensity());
 }
 
 bool holidayEasterEggsInit() {

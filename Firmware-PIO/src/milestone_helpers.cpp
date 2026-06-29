@@ -5,20 +5,24 @@
 
 static bool animationBrightnessBoostEnabled = false;
 static uint8_t animationBrightnessBoostAmount = 0;
+static uint8_t displayBaselineBrightness = 0;
 
-void animationBrightnessConfigure(bool boostEnabled, uint8_t boostAmount) {
+void animationBrightnessConfigure(uint8_t baselineIntensity, bool boostEnabled,
+                                  uint8_t boostAmount) {
+  displayBaselineBrightness = min((uint8_t)15, baselineIntensity);
   animationBrightnessBoostEnabled = boostEnabled;
   animationBrightnessBoostAmount = min((uint8_t)15, boostAmount);
 }
 
-uint8_t animationDisplayIntensity(uint8_t normalizedIntensity) {
-  if (!animationBrightnessBoostEnabled || animationBrightnessBoostAmount == 0) {
-    return 0;
-  }
+uint8_t displayBaselineIntensity() { return displayBaselineBrightness; }
 
-  uint8_t clampedNormalized = min((uint8_t)15, normalizedIntensity);
-  uint8_t boosted = clampedNormalized + animationBrightnessBoostAmount;
-  return boosted > 15 ? 15 : boosted;
+uint8_t animationDisplayIntensity(uint8_t normalizedIntensity) {
+  uint8_t intensity = displayBaselineBrightness +
+                      min((uint8_t)15, normalizedIntensity);
+  if (animationBrightnessBoostEnabled) {
+    intensity += animationBrightnessBoostAmount;
+  }
+  return intensity > 15 ? 15 : intensity;
 }
 
 void milestoneCtxInit(MD_Parola &display, MilestoneCtx &ctx) {

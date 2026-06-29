@@ -1,6 +1,6 @@
 {
   "name": "YouTube Stats Counter",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "builds": [
     {
       "chipFamily": "ESP32",

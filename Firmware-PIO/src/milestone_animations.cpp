@@ -32,7 +32,7 @@ void milestoneCleanupDisplay(MD_Parola &display) {
   matrix->clear();
   matrix->update();
   display.displayClear();
-  display.setIntensity(0);
+  display.setIntensity(displayBaselineIntensity());
 }
 
 void milestoneGetIncreaseLabel(MilestoneTier tier, char *buffer, size_t size) {
