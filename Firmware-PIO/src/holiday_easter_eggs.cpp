@@ -25,14 +25,15 @@
 #include "holiday_veterans_day.h"
 
 #include <MD_MAX72xx.h>
+#include <math.h>
 #include <time.h>
 
 static const unsigned long HOLIDAY_EGG_INTERVAL_MS = 5UL * 60UL * 1000UL;
-static const char *NTP_SERVER_1 = "pool.ntp.org";
-static const char *NTP_SERVER_2 = "time.nist.gov";
 static const char *TZ_EST = "EST5EDT,M3.2.0/2,M11.1.0/2";
 
 static bool timeSynced = false;
+static time_t holidayServerTimeUnix = 0;
+static unsigned long holidayServerTimeMillis = 0;
 static unsigned long lastHolidayEggMs = 0;
 
 static bool isThanksgiving(const struct tm &timeinfo) {
@@ -105,21 +106,26 @@ void holidayScrollMessage(MD_Parola &display, const char *message) {
 bool holidayEasterEggsInit() {
   setenv("TZ", TZ_EST, 1);
   tzset();
-  configTime(0, 0, NTP_SERVER_1, NTP_SERVER_2);
+  Serial.println("Holiday timezone configured (EST).");
+  return true;
+}
 
-  struct tm timeinfo;
-  for (int attempt = 0; attempt < 20; attempt++) {
-    if (getLocalTime(&timeinfo, 1000)) {
-      timeSynced = true;
-      lastHolidayEggMs = millis();
-      Serial.println("Holiday clock synced (EST).");
-      return true;
-    }
-    delay(100);
+bool holidayEasterEggsSetServerTime(double serverTimeUnix) {
+  if (!isfinite(serverTimeUnix) || serverTimeUnix <= 0) {
+    Serial.println("Holiday clock missing valid server time.");
+    return false;
   }
 
-  Serial.println("Holiday clock sync failed.");
-  return false;
+  unsigned long now = millis();
+  bool wasTimeSynced = timeSynced;
+  holidayServerTimeUnix = (time_t)serverTimeUnix;
+  holidayServerTimeMillis = now;
+  timeSynced = true;
+  if (!wasTimeSynced) {
+    lastHolidayEggMs = now;
+  }
+  Serial.println("Holiday clock synced from stats API.");
+  return true;
 }
 
 HolidayId getCurrentHoliday() {
@@ -127,8 +133,10 @@ HolidayId getCurrentHoliday() {
     return HolidayId::None;
   }
 
+  time_t currentUnixTime =
+      holidayServerTimeUnix + ((millis() - holidayServerTimeMillis) / 1000);
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) {
+  if (localtime_r(&currentUnixTime, &timeinfo) == nullptr) {
     return HolidayId::None;
   }
 

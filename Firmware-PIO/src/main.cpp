@@ -792,9 +792,11 @@ bool fetchStats() {
   }
 
   stat_baseline_started_at_unix = baseline["startedAtUnix"] | 0.0;
+  double server_time_unix = doc["serverTimeUnix"] | 0.0;
   stats_as_of_unix = adjusted["asOfUnix"] | 0.0;
 
-  if (stat_baseline_started_at_unix <= 0 || stats_as_of_unix <= 0) {
+  if (stat_baseline_started_at_unix <= 0 || server_time_unix <= 0 ||
+      stats_as_of_unix <= 0) {
     Serial.println("Stats response missing valid Unix timestamps.");
     return false;
   }
@@ -809,6 +811,7 @@ bool fetchStats() {
       metrics28Days["watchHours"] | 0.0;
 
   stats_fetched_at = millis();
+  holidayEasterEggsSetServerTime(server_time_unix);
   statsLoaded = true;
   ensureCurrentStatSelected();
 

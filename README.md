@@ -23,6 +23,7 @@ An ESP32-based display that shows projected channel stats from a configurable JS
 - **In-browser reconfigure** — visit the device IP any time to change Wi-Fi or stats endpoint settings; leave the Wi-Fi fields blank to keep saved values
 - **OTA firmware updates** — upload a compiled `.bin` straight from the config page, no USB cable needed after first flash
 - **Milestone animations** — celebratory LED animations when projected stats cross round-number thresholds (see [Milestones](#milestones))
+- **Holiday easter eggs** — themed animations and scrolling greetings on holidays and special dates (see [Holidays](#holidays))
 
 ---
 
@@ -73,7 +74,52 @@ Tier 1 fires on every 100; higher tiers fire on their own boundaries (e.g. 1,000
 | 18  | Watch hours | 5    | 1M        | Done (triple drain + firework barrage)            |
 | 19  | Watch hours | 6    | 10M       | Done (ultimate fullscreen + twin barrages)        |
 
-Implementation will live in `Firmware-PIO/` and trigger off projected stat values between API refreshes.
+Animations trigger off projected stat values between API refreshes.
+
+---
+
+## Holidays
+
+On matching calendar dates (America/Eastern), the matrix plays a themed animation and scrolls a short greeting. Animations repeat every 5 minutes while the holiday is active.
+
+The device does not use NTP. It seeds its clock from `serverTimeUnix` in each stats API response, then advances locally between refreshes — the same approach used for stat projection.
+
+### Supported dates
+
+| Date | Holiday |
+| ---- | ------- |
+| Jan 1 | New Year's Day |
+| Feb 2 | Groundhog Day |
+| Feb 14 | Valentine's Day |
+| 3rd Mon in Feb | Presidents Day |
+| Feb 29 | Leap Day |
+| Mar 14 | Pi Day |
+| Mar 17 | St. Patrick's Day |
+| Easter Sunday | Easter (computed) |
+| Apr 1 | April Fools' Day |
+| Apr 22 | Earth Day |
+| May 5 | Cinco de Mayo |
+| Last Mon in May | Memorial Day |
+| 3rd Sun in Jun | Father's Day |
+| Jul 4 | Independence Day |
+| Aug 8 | Creator Cat Day |
+| Aug 12 | Justin's birthday |
+| Sep 12 | Dad's birthday |
+| 1st Mon in Sep | Labor Day |
+| Sep 19 | Talk Like a Pirate Day |
+| Sep 29 | National Coffee Day |
+| Oct 31 | Halloween |
+| Nov 11 | Veterans Day |
+| 4th Thu in Nov | Thanksgiving |
+| Dec 25 | Christmas |
+| Dec 31 | New Year's Eve |
+
+### Development preview
+
+In `Firmware-PIO/include/holiday_easter_eggs.h`:
+
+- `PREVIEW_HOLIDAYS` — cycle every holiday animation on boot
+- `RUN_HOLIDAY_PREVIEW_ON_BOOT` — preview a single holiday on boot (when `PREVIEW_HOLIDAYS` is false)
 
 ---
 
@@ -141,23 +187,39 @@ Regular Version:
 
 ### 1. Prepare a stats endpoint
 
-The device fetches a user-provided endpoint that returns this JSON shape:
+The device fetches a user-provided endpoint that returns this JSON shape. A ready-made public endpoint is available at [Jay Mayor Stats API](https://www.jaymayor.com/api/docs) (`GET https://www.jaymayor.com/api/stats`).
 
 ```json
 {
-  "adjusted": {
-    "asOfUnix": 1782669205,
-    "subscribers": 10276,
-    "totalViews": 2839588,
-    "watchHours": 100352
+  "serverTimeUnix": 1781918014,
+  "baseline": {
+    "startedAtUnix": 1781917014,
+    "subscribers": 10169,
+    "totalViews": 2748484,
+    "watchHours": 0
   },
-  "growthRatesPerMinute": {
-    "subscribers": 0.0095,
-    "views": 4.43,
-    "watchHours": 0.33
+  "metrics28Days": {
+    "subscribers": 405,
+    "views": 177568,
+    "watchHours": 0
+  },
+  "adjusted": {
+    "asOfUnix": 1781918014,
+    "subscribers": 10170,
+    "totalViews": 2748557,
+    "watchHours": 0
   }
 }
 ```
+
+Required fields:
+
+- `serverTimeUnix` — current server time; used for stat projection timing and holiday date checks
+- `baseline` — starting whole-number stats and `startedAtUnix` timestamp
+- `metrics28Days` — subscriber, view, and watch-hour gains over the last 28 days (projection rates)
+- `adjusted` — projected whole-number stats as of `asOfUnix`
+
+`growthRatesPerMinute` is optional documentation on the Jay Mayor API but is not required by the firmware.
 
 ### 2. Flash the firmware
 

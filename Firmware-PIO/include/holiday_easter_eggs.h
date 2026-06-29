@@ -39,8 +39,11 @@ const bool PREVIEW_HOLIDAYS = false;
 const bool RUN_HOLIDAY_PREVIEW_ON_BOOT = false;
 const HolidayId HOLIDAY_PREVIEW_BOOT = HolidayId::CoffeeDay;
 
-// Sync NTP and configure America/Eastern. Call after WiFi connects.
+// Configure America/Eastern holiday time conversion.
 bool holidayEasterEggsInit();
+
+// Seed the holiday clock from the stats API's serverTimeUnix field.
+bool holidayEasterEggsSetServerTime(double serverTimeUnix);
 
 // Returns today's holiday in EST, or None.
 HolidayId getCurrentHoliday();
