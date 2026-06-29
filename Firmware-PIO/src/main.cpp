@@ -49,7 +49,7 @@ Preferences prefs;
 
 const unsigned long DISPLAY_UPDATE_MS = 1000;
 const float DEFAULT_STAT_CYCLE_SECONDS = 5.0f;
-const unsigned int DEFAULT_SCROLL_SPEED_MS = 50;
+const unsigned int DEFAULT_SCROLL_SPEED_MS = 75;
 const uint8_t STAT_RIGHT_PADDING_COLUMNS = 1;
 const int16_t STAT_SCROLL_OFFSCREEN_MARGIN = 2;
 const int16_t STAT_LABEL_NUMBER_GAP_COLUMNS = 6;
@@ -819,7 +819,24 @@ static char statCombinedBuffer[32];
 static String lastDisplayedValue = "";
 static bool statDisplayScrolling = false;
 
-enum StatExitEffect { EXIT_DISSOLVE, EXIT_WIPE, EXIT_DROP, EXIT_EFFECT_COUNT };
+enum StatExitEffect {
+  EXIT_DISSOLVE,
+  EXIT_WIPE,
+  EXIT_DROP,
+  EXIT_RISE,
+  EXIT_CURTAIN,
+  EXIT_CENTER_BURST,
+  EXIT_SHRINK,
+  EXIT_ROW_WIPE,
+  EXIT_DIAGONAL_WIPE,
+  EXIT_PIXEL_RAIN,
+  EXIT_SPARKLE,
+  EXIT_VENETIAN_BLINDS,
+  EXIT_GLITCH,
+  EXIT_COMPRESS_DOWN,
+  EXIT_TYPEWRITER_ERASE,
+  EXIT_EFFECT_COUNT
+};
 enum StatScrollPhase { SCROLL_NONE, SCROLL_EXIT, SCROLL_IN, SCROLL_LABEL_OUT };
 static StatScrollPhase statScrollPhase = SCROLL_NONE;
 static StatExitEffect statExitEffect = EXIT_DISSOLVE;
@@ -829,8 +846,19 @@ static uint16_t statExitColEnd = 0;
 static uint16_t statExitFrameWidth = 0;
 static uint8_t statExitStep = 0;
 static uint8_t statExitMaxSteps = 0;
-static const uint8_t STAT_EXIT_DISSOLVE_FRAMES = 14;
-static const uint8_t STAT_EXIT_DROP_FRAMES = 10;
+static const uint8_t STAT_EXIT_DISSOLVE_FRAMES = 9;
+static const uint8_t STAT_EXIT_DROP_FRAMES = 8;
+static const uint8_t STAT_EXIT_RISE_FRAMES = 8;
+static const uint8_t STAT_EXIT_CURTAIN_COLUMNS_PER_FRAME = 3;
+static const uint8_t STAT_EXIT_CENTER_COLUMNS_PER_FRAME = 3;
+static const uint8_t STAT_EXIT_WIPE_COLUMNS_PER_FRAME = 3;
+static const uint8_t STAT_EXIT_ROW_WIPE_ROWS_PER_FRAME = 1;
+static const uint8_t STAT_EXIT_DIAGONAL_COLUMNS_PER_FRAME = 4;
+static const uint8_t STAT_EXIT_PIXEL_RAIN_FRAMES = 9;
+static const uint8_t STAT_EXIT_SPARKLE_FRAMES = 9;
+static const uint8_t STAT_EXIT_GLITCH_FRAMES = 8;
+static const uint8_t STAT_EXIT_COMPRESS_FRAMES = 8;
+static const uint8_t STAT_EXIT_TYPEWRITER_COLUMNS_PER_FRAME = 4;
 static int16_t statScrollStep = 0;
 static int16_t statScrollLabelWidth = 0;
 static int16_t statScrollNumberWidth = 0;
@@ -1078,6 +1106,57 @@ static void captureStatExitFrame() {
   renderTextToExitFrame(statDisplayBuffer, STAT_RIGHT_PADDING_COLUMNS);
 }
 
+static uint8_t ceilDiv16(uint16_t value, uint8_t divisor) {
+  return (uint8_t)((value + divisor - 1) / divisor);
+}
+
+static uint8_t getStatExitMaxSteps(StatExitEffect effect) {
+  switch (effect) {
+  case EXIT_WIPE:
+    return ceilDiv16(statExitFrameWidth, STAT_EXIT_WIPE_COLUMNS_PER_FRAME) + 1;
+  case EXIT_DISSOLVE:
+    return STAT_EXIT_DISSOLVE_FRAMES;
+  case EXIT_DROP:
+    return STAT_EXIT_DROP_FRAMES;
+  case EXIT_RISE:
+    return STAT_EXIT_RISE_FRAMES;
+  case EXIT_CURTAIN:
+    return ceilDiv16((statExitFrameWidth + 1) / 2,
+                     STAT_EXIT_CURTAIN_COLUMNS_PER_FRAME) +
+           1;
+  case EXIT_CENTER_BURST:
+    return ceilDiv16((statExitFrameWidth + 1) / 2,
+                     STAT_EXIT_CENTER_COLUMNS_PER_FRAME) +
+           1;
+  case EXIT_SHRINK:
+    return 7;
+  case EXIT_ROW_WIPE:
+    return ceilDiv16(8, STAT_EXIT_ROW_WIPE_ROWS_PER_FRAME) + 1;
+  case EXIT_DIAGONAL_WIPE:
+    return ceilDiv16(statExitFrameWidth + 7,
+                     STAT_EXIT_DIAGONAL_COLUMNS_PER_FRAME) +
+           1;
+  case EXIT_PIXEL_RAIN:
+    return STAT_EXIT_PIXEL_RAIN_FRAMES;
+  case EXIT_SPARKLE:
+    return STAT_EXIT_SPARKLE_FRAMES;
+  case EXIT_VENETIAN_BLINDS:
+    return 5;
+  case EXIT_GLITCH:
+    return STAT_EXIT_GLITCH_FRAMES;
+  case EXIT_COMPRESS_DOWN:
+    return STAT_EXIT_COMPRESS_FRAMES;
+  case EXIT_TYPEWRITER_ERASE:
+    return ceilDiv16(statExitFrameWidth,
+                     STAT_EXIT_TYPEWRITER_COLUMNS_PER_FRAME) +
+           1;
+  case EXIT_EFFECT_COUNT:
+    return STAT_EXIT_DISSOLVE_FRAMES;
+  }
+
+  return STAT_EXIT_DISSOLVE_FRAMES;
+}
+
 static void advanceStatExitDissolve() {
   bool anyRemaining = false;
 
@@ -1086,7 +1165,7 @@ static void advanceStatExitDissolve() {
       if (!statExitFrame[row][col]) {
         continue;
       }
-      if (random(100) < 35) {
+      if (random(100) < 40) {
         statExitFrame[row][col] = false;
       } else {
         anyRemaining = true;
@@ -1126,6 +1205,144 @@ static void advanceStatExitDrop() {
   }
 }
 
+static void advanceStatExitRise() {
+  bool nextFrame[8][32] = {{false}};
+  bool anyRemaining = false;
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+      if (!statExitFrame[row][col]) {
+        continue;
+      }
+      if (row >= 1) {
+        nextFrame[row - 1][col] = true;
+        anyRemaining = true;
+      }
+    }
+  }
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+      statExitFrame[row][col] = nextFrame[row][col];
+    }
+  }
+
+  if (!anyRemaining) {
+    statExitStep = statExitMaxSteps;
+  }
+}
+
+static void advanceStatExitPixelRain() {
+  bool nextFrame[8][32] = {{false}};
+  bool anyRemaining = false;
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+      if (!statExitFrame[row][col] || random(100) < 12) {
+        continue;
+      }
+
+      uint8_t nextRow = row + 1 + random(2);
+      if (nextRow < 8) {
+        nextFrame[nextRow][col] = true;
+        anyRemaining = true;
+      }
+    }
+  }
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+      statExitFrame[row][col] = nextFrame[row][col];
+    }
+  }
+
+  if (!anyRemaining) {
+    statExitStep = statExitMaxSteps;
+  }
+}
+
+static void advanceStatExitCompressDown() {
+  bool nextFrame[8][32] = {{false}};
+  bool anyRemaining = false;
+
+  for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+    uint8_t litCount = 0;
+    for (uint8_t row = 0; row < 8; row++) {
+      if (statExitFrame[row][col]) {
+        litCount++;
+      }
+    }
+
+    if (litCount == 0) {
+      continue;
+    }
+
+    if (litCount > 1 || random(100) < 45) {
+      litCount--;
+    }
+
+    for (uint8_t i = 0; i < litCount; i++) {
+      nextFrame[7 - i][col] = true;
+      anyRemaining = true;
+    }
+  }
+
+  for (uint8_t row = 0; row < 8; row++) {
+    for (uint16_t col = 0; col < statExitFrameWidth; col++) {
+      statExitFrame[row][col] = nextFrame[row][col];
+    }
+  }
+
+  if (!anyRemaining) {
+    statExitStep = statExitMaxSteps;
+  }
+}
+
+static bool shouldHideStatExitPixel(uint8_t row, uint16_t localCol) {
+  uint16_t amount;
+
+  switch (statExitEffect) {
+  case EXIT_WIPE:
+    amount = (uint16_t)statExitStep * STAT_EXIT_WIPE_COLUMNS_PER_FRAME;
+    return amount >= statExitFrameWidth ||
+           localCol >= statExitFrameWidth - amount;
+  case EXIT_CURTAIN:
+    amount = (uint16_t)statExitStep * STAT_EXIT_CURTAIN_COLUMNS_PER_FRAME;
+    return amount >= (statExitFrameWidth + 1) / 2 ||
+           localCol < amount || localCol >= statExitFrameWidth - amount;
+  case EXIT_CENTER_BURST: {
+    int16_t center2 = (int16_t)statExitFrameWidth - 1;
+    int16_t distance2 = abs((int16_t)(localCol * 2) - center2);
+    amount = (uint16_t)statExitStep * STAT_EXIT_CENTER_COLUMNS_PER_FRAME;
+    return distance2 <= (int16_t)(amount * 2);
+  }
+  case EXIT_SHRINK: {
+    uint8_t rowInset = statExitStep;
+    uint16_t colInset = (uint16_t)statExitStep * 4;
+    if (rowInset >= 4 || colInset * 2 >= statExitFrameWidth) {
+      return true;
+    }
+    return row < rowInset || row >= 8 - rowInset || localCol < colInset ||
+           localCol >= statExitFrameWidth - colInset;
+  }
+  case EXIT_ROW_WIPE:
+    amount = (uint16_t)statExitStep * STAT_EXIT_ROW_WIPE_ROWS_PER_FRAME;
+    return row < amount;
+  case EXIT_DIAGONAL_WIPE:
+    amount = (uint16_t)statExitStep * STAT_EXIT_DIAGONAL_COLUMNS_PER_FRAME;
+    return localCol + row < amount;
+  case EXIT_VENETIAN_BLINDS:
+    return (statExitStep >= 1 && (localCol % 2) == 0) ||
+           (statExitStep >= 2 && (localCol % 2) == 1);
+  case EXIT_TYPEWRITER_ERASE:
+    amount = (uint16_t)statExitStep * STAT_EXIT_TYPEWRITER_COLUMNS_PER_FRAME;
+    return amount >= statExitFrameWidth ||
+           localCol >= statExitFrameWidth - amount;
+  default:
+    return false;
+  }
+}
+
 static void renderStatExitFrame() {
   MD_MAX72XX *matrix = Display.getGraphicObject();
 
@@ -1134,17 +1351,34 @@ static void renderStatExitFrame() {
 
   for (uint8_t row = 0; row < 8; row++) {
     for (uint16_t localCol = 0; localCol < statExitFrameWidth; localCol++) {
-      if (!statExitFrame[row][localCol]) {
+      bool pixelOn = statExitFrame[row][localCol];
+      if (statExitEffect == EXIT_SPARKLE && !pixelOn && random(100) < 4) {
+        pixelOn = true;
+      }
+
+      if (!pixelOn || shouldHideStatExitPixel(row, localCol)) {
         continue;
       }
 
       uint16_t matrixCol = statExitColStart + localCol;
-      if (statExitEffect == EXIT_WIPE &&
-          matrixCol > statExitColEnd - statExitStep) {
-        continue;
-      }
 
-      matrix->setPoint(row, matrixCol, true);
+      if (statExitEffect == EXIT_GLITCH) {
+        if (random(100) < statExitStep * 12) {
+          continue;
+        }
+
+        int16_t glitchRow = (int16_t)row + (int16_t)random(-1, 2);
+        int16_t glitchCol = (int16_t)matrixCol + (int16_t)random(-1, 2);
+        if (glitchRow < 0 || glitchRow >= 8 ||
+            glitchCol < (int16_t)statExitColStart ||
+            glitchCol > (int16_t)statExitColEnd) {
+          continue;
+        }
+
+        matrix->setPoint((uint8_t)glitchRow, (uint16_t)glitchCol, true);
+      } else {
+        matrix->setPoint(row, matrixCol, true);
+      }
     }
   }
 
@@ -1163,14 +1397,7 @@ void startStatExitTransition() {
 
   statExitEffect = (StatExitEffect)random((long)EXIT_EFFECT_COUNT);
   statExitStep = 0;
-  if (statExitEffect == EXIT_WIPE) {
-    statExitMaxSteps =
-        statExitFrameWidth > 255 ? 255 : (uint8_t)statExitFrameWidth;
-  } else if (statExitEffect == EXIT_DISSOLVE) {
-    statExitMaxSteps = STAT_EXIT_DISSOLVE_FRAMES;
-  } else {
-    statExitMaxSteps = STAT_EXIT_DROP_FRAMES;
-  }
+  statExitMaxSteps = getStatExitMaxSteps(statExitEffect);
 
   statScrollPhase = SCROLL_EXIT;
   statScrollLastStepMs = millis();
@@ -1299,6 +1526,14 @@ bool tickStatScrollAnimation() {
       advanceStatExitDissolve();
     } else if (statExitEffect == EXIT_DROP) {
       advanceStatExitDrop();
+    } else if (statExitEffect == EXIT_RISE) {
+      advanceStatExitRise();
+    } else if (statExitEffect == EXIT_PIXEL_RAIN) {
+      advanceStatExitPixelRain();
+    } else if (statExitEffect == EXIT_SPARKLE) {
+      advanceStatExitDissolve();
+    } else if (statExitEffect == EXIT_COMPRESS_DOWN) {
+      advanceStatExitCompressDown();
     }
     renderStatExitFrame();
     return true;
