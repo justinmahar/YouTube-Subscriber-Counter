@@ -29,8 +29,8 @@
 #define WIFI_TIMEOUT_MS 15000
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
-const bool ENABLE_WOKWI_SETUP = true;
-const bool DISABLE_INTRO_AND_WIFI_INFO = true;
+const bool ENABLE_WOKWI_SETUP = false;
+const bool DISABLE_INTRO_AND_WIFI_INFO = false;
 
 // Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true to preview
 // animations on boot.
@@ -1451,6 +1451,29 @@ void renderRightAlignedStatRollingLastDigit(const char *oldText,
   matrix->update(MD_MAX72XX::ON);
 }
 
+static bool tickOverflowStatScroll() {
+  if (!statDisplayScrolling || statScrollPhase != SCROLL_NONE) {
+    return false;
+  }
+
+  if (!Display.displayAnimate()) {
+    return true;
+  }
+
+  if (selectedStatsCount() > 1) {
+    statDisplayScrolling = false;
+    lastDisplayedValue = "";
+    current_stat_index = nextSelectedStatIndex(current_stat_index);
+    cycle_lasttime = millis();
+    display_lasttime = cycle_lasttime;
+    startStatScrollIn();
+  } else {
+    Display.displayReset();
+  }
+
+  return true;
+}
+
 void startStatScrollIn() {
   if (selectedStatsCount() <= 1 || !statsLoaded)
     return;
@@ -2002,12 +2025,10 @@ void loop() {
         display_lasttime = now;
       }
 
-      if (statDisplayScrolling && statScrollPhase == SCROLL_NONE) {
-        Display.displayAnimate();
-      }
-
       if (selectedStatsCount() > 1) {
-        if (tickStatScrollAnimation()) {
+        if (tickOverflowStatScroll()) {
+          // Wide values use Parola's native scroll and advance when complete.
+        } else if (tickStatScrollAnimation()) {
           // Label/number scroll animation in progress.
         } else if (now - cycle_lasttime >=
                    (unsigned long)(saved_stat_cycle_seconds * 1000.0f)) {
@@ -2017,6 +2038,8 @@ void loop() {
           showProjectedStat();
           display_lasttime = now;
         }
+      } else if (tickOverflowStatScroll()) {
+        // Wide single-stat values continuously loop their native scroll.
       } else if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
         showProjectedStat();
         display_lasttime = now;
@@ -2027,6 +2050,13 @@ void loop() {
 
 String getStatDisplayText(int statIndex, const String &formattedValue) {
   if (statIndex == STAT_INDEX_SUBSCRIBERS) {
+    long value = formattedValue.toInt();
+    if (value >= 1000000L) {
+      return formattedValue;
+    }
+    if (value >= 100000L) {
+      return String("*") + formattedValue;
+    }
     return String("* ") + formattedValue;
   }
   return formattedValue;
