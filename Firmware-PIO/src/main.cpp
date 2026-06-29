@@ -15,6 +15,7 @@
 
 // File imports
 #include "FontSubs.h"
+#include "holiday_easter_eggs.h"
 #include "milestone_animations.h"
 
 // Hardware config
@@ -1912,7 +1913,9 @@ void setup() {
   Display.setTextAlignment(PA_CENTER);
 
   randomSeed(esp_random());
-  if (!DISABLE_INTRO_AND_WIFI_INFO) {
+  if (RUN_HOLIDAY_PREVIEW_ON_BOOT) {
+    runHolidayEasterEgg(Display, HOLIDAY_PREVIEW_BOOT);
+  } else if (!DISABLE_INTRO_AND_WIFI_INFO) {
     if (RUN_MILESTONE_TEST_ON_BOOT) {
       for (MilestoneAnimation anim : HOURS_BOOT_PREVIEW) {
         runMilestoneAnimation(Display, anim);
@@ -1957,6 +1960,8 @@ void setup() {
         }
         delay(2000);
       }
+
+      holidayEasterEggsInit();
 
       registerRoutes();
       server.begin();
@@ -2015,6 +2020,17 @@ void loop() {
 
     if (statsLoaded) {
       if (checkAndRunMilestoneAnimation()) {
+        now = millis();
+        if (selectedStatsCount() > 1) {
+          startStatScrollIn();
+        } else {
+          showProjectedStat();
+        }
+        cycle_lasttime = now;
+        display_lasttime = now;
+      }
+
+      if (checkAndRunHolidayEasterEgg(Display)) {
         now = millis();
         if (selectedStatsCount() > 1) {
           startStatScrollIn();
