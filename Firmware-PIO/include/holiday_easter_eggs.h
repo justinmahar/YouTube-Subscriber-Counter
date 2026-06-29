@@ -39,6 +39,9 @@ const bool PREVIEW_HOLIDAYS = false;
 const bool RUN_HOLIDAY_PREVIEW_ON_BOOT = false;
 const HolidayId HOLIDAY_PREVIEW_BOOT = HolidayId::CoffeeDay;
 
+// Set true to make today's holiday a random holiday for testing reminders.
+const bool DEBUG_RANDOM_HOLIDAY_TODAY = false;
+
 // Configure America/Eastern holiday time conversion.
 bool holidayEasterEggsInit();
 
@@ -57,7 +60,10 @@ void runHolidayPreviewCycle(MD_Parola &display);
 // Shared ending for holiday animations.
 void holidayScrollMessage(MD_Parola &display, const char *message);
 
-// On holidays, runs the easter egg every 5 minutes. Returns true if one played.
-bool checkAndRunHolidayEasterEgg(MD_Parola &display);
+// On holidays, runs the easter egg at the configured reminder interval.
+// Set the interval to 0 to disable holidays.
+// Returns true if one played.
+bool checkAndRunHolidayEasterEgg(MD_Parola &display,
+                                 unsigned int reminderIntervalMinutes);
 
 #endif

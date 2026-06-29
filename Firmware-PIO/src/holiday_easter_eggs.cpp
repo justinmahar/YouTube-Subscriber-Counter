@@ -26,17 +26,39 @@
 #include "holiday_veterans_day.h"
 #include "milestone_helpers.h"
 
+#include <Arduino.h>
 #include <MD_MAX72xx.h>
 #include <math.h>
 #include <time.h>
 
-static const unsigned long HOLIDAY_EGG_INTERVAL_MS = 5UL * 60UL * 1000UL;
 static const char *TZ_EST = "EST5EDT,M3.2.0/2,M11.1.0/2";
 
 static bool timeSynced = false;
 static time_t holidayServerTimeUnix = 0;
 static unsigned long holidayServerTimeMillis = 0;
 static unsigned long lastHolidayEggMs = 0;
+
+static const HolidayId HOLIDAY_TEST_CHOICES[] = {
+    HolidayId::StPatricksDay, HolidayId::Halloween,       HolidayId::Christmas,
+    HolidayId::ValentinesDay, HolidayId::JulyFourth,      HolidayId::GroundhogDay,
+    HolidayId::NewYearsEve,   HolidayId::PiDay,           HolidayId::AprilFools,
+    HolidayId::CincoDeMayo,   HolidayId::JustinBirthday,  HolidayId::DadBirthday,
+    HolidayId::PirateDay,     HolidayId::VeteransDay,     HolidayId::Thanksgiving,
+    HolidayId::EarthDay,      HolidayId::MemorialDay,     HolidayId::CreatorCatDay,
+    HolidayId::LaborDay,      HolidayId::LeapDay,         HolidayId::Easter,
+    HolidayId::FathersDay,    HolidayId::PresidentsDay,   HolidayId::CoffeeDay,
+};
+
+static HolidayId getRandomDebugHoliday() {
+  static HolidayId selectedHoliday = HolidayId::None;
+  if (selectedHoliday == HolidayId::None) {
+    size_t holidayCount = sizeof(HOLIDAY_TEST_CHOICES) / sizeof(HolidayId);
+    selectedHoliday = HOLIDAY_TEST_CHOICES[random(holidayCount)];
+    Serial.print("Debug random holiday selected: ");
+    Serial.println(static_cast<uint8_t>(selectedHoliday));
+  }
+  return selectedHoliday;
+}
 
 static void drawHolidayZoomStar(MilestoneCtx &ctx, float outerRadiusX,
                                 float outerRadiusY, int zoomFrame) {
@@ -369,6 +391,10 @@ bool holidayEasterEggsSetServerTime(double serverTimeUnix) {
 }
 
 HolidayId getCurrentHoliday() {
+  if (DEBUG_RANDOM_HOLIDAY_TODAY) {
+    return getRandomDebugHoliday();
+  }
+
   if (!timeSynced) {
     return HolidayId::None;
   }
@@ -564,8 +590,9 @@ void runHolidayEasterEgg(MD_Parola &display, HolidayId holiday) {
   }
 }
 
-bool checkAndRunHolidayEasterEgg(MD_Parola &display) {
-  if (PREVIEW_HOLIDAYS) {
+bool checkAndRunHolidayEasterEgg(MD_Parola &display,
+                                 unsigned int reminderIntervalMinutes) {
+  if (PREVIEW_HOLIDAYS || reminderIntervalMinutes == 0) {
     return false;
   }
 
@@ -575,8 +602,10 @@ bool checkAndRunHolidayEasterEgg(MD_Parola &display) {
   }
 
   unsigned long now = millis();
+  unsigned long intervalMs =
+      (unsigned long)reminderIntervalMinutes * 60UL * 1000UL;
   if (lastHolidayEggMs != 0 &&
-      now - lastHolidayEggMs < HOLIDAY_EGG_INTERVAL_MS) {
+      now - lastHolidayEggMs < intervalMs) {
     return false;
   }
 

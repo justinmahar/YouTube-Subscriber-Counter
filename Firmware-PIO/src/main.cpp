@@ -74,6 +74,8 @@ const int16_t STAT_LABEL_NUMBER_GAP_COLUMNS = 6;
 const uint8_t DIGIT_ROLL_FRAME_DELAY_MS = 28;
 const unsigned int DEFAULT_REFRESH_MINUTES = 5;
 const unsigned int MAX_REFRESH_MINUTES = 1440;
+const unsigned int DEFAULT_HOLIDAY_REMINDER_MINUTES = 15;
+const unsigned int MAX_HOLIDAY_REMINDER_MINUTES = 1440;
 const uint8_t DEFAULT_DISPLAY_BRIGHTNESS = 0;
 const double SECONDS_PER_28_DAYS = 28.0 * 24.0 * 60.0 * 60.0;
 const int INTERVAL_PATTERN_LENGTH = 48;
@@ -111,6 +113,7 @@ StaticJsonDocument<1536> doc;
 String saved_ssid, saved_pass, saved_endpoint;
 uint8_t saved_stats = STAT_SUBSCRIBERS;
 unsigned int saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
+unsigned int saved_holiday_reminder_minutes = DEFAULT_HOLIDAY_REMINDER_MINUTES;
 float saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
 unsigned int saved_scroll_speed_ms = DEFAULT_SCROLL_SPEED_MS;
 uint8_t saved_display_brightness = DEFAULT_DISPLAY_BRIGHTNESS;
@@ -269,6 +272,11 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
       <div class="hint">Adds 0-15 brightness steps to normalized animation frames.</div>
     </div>
     <div>
+      <label>Holiday reminder interval (minutes)</label>
+      <input type="number" id="holiday-reminder" min="0" max="1440" step="1" value="HOLIDAY_REMINDER_PLACEHOLDER">
+      <div class="hint">How often holiday messages replay on matching calendar days. Use 0 to disable holidays.</div>
+    </div>
+    <div>
       <label>Refresh rate (minutes)</label>
       <input type="number" id="refresh" min="1" max="1440" step="1" value="REFRESH_PLACEHOLDER">
       <div class="hint">The display projects values every second between API refreshes.</div>
@@ -302,6 +310,7 @@ function persistSetupForm(){
       brightness:document.getElementById('brightness').value,
       animationBoost:document.getElementById('anim-boost').checked,
       animationBoostAmount:document.getElementById('anim-boost-amount').value,
+      holidayReminder:document.getElementById('holiday-reminder').value,
       refresh:document.getElementById('refresh').value
     }));
   }catch(e){}
@@ -321,11 +330,12 @@ function restoreSetupForm(){
     if(d.brightness!=null)document.getElementById('brightness').value=d.brightness;
     if(d.animationBoost!=null)document.getElementById('anim-boost').checked=!!d.animationBoost;
     if(d.animationBoostAmount!=null)document.getElementById('anim-boost-amount').value=d.animationBoostAmount;
+    if(d.holidayReminder!=null)document.getElementById('holiday-reminder').value=d.holidayReminder;
     if(d.refresh!=null)document.getElementById('refresh').value=d.refresh;
   }catch(e){}
 }
 function bindSetupPersist(){
-  ['ssid','endpoint','scroll-speed','stat-cycle','brightness','anim-boost-amount','refresh'].forEach(function(id){
+  ['ssid','endpoint','scroll-speed','stat-cycle','brightness','anim-boost-amount','holiday-reminder','refresh'].forEach(function(id){
     document.getElementById(id).addEventListener('input',persistSetupForm);
   });
   ['stat-subs','stat-views','stat-hours','anim-boost'].forEach(function(id){
@@ -385,6 +395,7 @@ function save(){
   var brightness=parseInt(document.getElementById('brightness').value,10);
   var animBoost=document.getElementById('anim-boost').checked;
   var animBoostAmount=parseInt(document.getElementById('anim-boost-amount').value,10);
+  var holidayReminder=parseInt(document.getElementById('holiday-reminder').value,10);
   var stats=0;
   if(document.getElementById('stat-subs').checked)stats|=1;
   if(document.getElementById('stat-views').checked)stats|=2;
@@ -397,11 +408,12 @@ function save(){
   if(!statCycle||statCycle<=0){msg.className='msg err';msg.textContent='Value display time must be greater than 0.';return;}
   if(isNaN(brightness)||brightness<0||brightness>15){msg.className='msg err';msg.textContent='Brightness must be 0-15.';return;}
   if(isNaN(animBoostAmount)||animBoostAmount<0||animBoostAmount>15){msg.className='msg err';msg.textContent='Animation brightness boost amount must be 0-15.';return;}
+  if(isNaN(holidayReminder)||holidayReminder<0){msg.className='msg err';msg.textContent='Holiday reminder interval must be 0 or greater.';return;}
   if(!r||r<1){msg.className='msg err';msg.textContent='Refresh rate must be at least 1 minute.';return;}
   persistSetupForm();
   msg.className='msg ok';msg.textContent='Saving\u2026 device will reboot and connect.';
   fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r+'&scrollSpeed='+scrollSpeed+'&statCycle='+statCycle+'&brightness='+brightness+'&animBoost='+(animBoost?1:0)+'&animBoostAmount='+animBoostAmount})
+    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r+'&scrollSpeed='+scrollSpeed+'&statCycle='+statCycle+'&brightness='+brightness+'&animBoost='+(animBoost?1:0)+'&animBoostAmount='+animBoostAmount+'&holidayReminder='+holidayReminder})
   .then(r=>r.text()).then(t=>{msg.textContent=t;});
 }
 function uploadFirmware(){
@@ -452,6 +464,8 @@ void loadPrefs() {
   saved_endpoint = prefs.getString("endpoint", "");
   saved_stats = prefs.getUChar("stats", STAT_SUBSCRIBERS) & STAT_ALL;
   saved_refresh_minutes = prefs.getUInt("refresh", DEFAULT_REFRESH_MINUTES);
+  saved_holiday_reminder_minutes =
+      prefs.getUInt("holidayMin", DEFAULT_HOLIDAY_REMINDER_MINUTES);
   saved_stat_cycle_seconds = prefs.getFloat("statCycle", 0);
   if (saved_stat_cycle_seconds <= 0) {
     unsigned long legacyStatCycle = prefs.getUInt("statCycle", 0);
@@ -474,6 +488,8 @@ void loadPrefs() {
     saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
   if (saved_refresh_minutes > MAX_REFRESH_MINUTES)
     saved_refresh_minutes = MAX_REFRESH_MINUTES;
+  if (saved_holiday_reminder_minutes > MAX_HOLIDAY_REMINDER_MINUTES)
+    saved_holiday_reminder_minutes = MAX_HOLIDAY_REMINDER_MINUTES;
   if (saved_display_brightness > 15)
     saved_display_brightness = 15;
   if (saved_animation_brightness_boost_amount > 15)
@@ -490,14 +506,17 @@ void loadPrefs() {
   Serial.print(", animBoost=");
   Serial.print(saved_animation_brightness_boost ? "on" : "off");
   Serial.print(", animBoostAmount=");
-  Serial.println(saved_animation_brightness_boost_amount);
+  Serial.print(saved_animation_brightness_boost_amount);
+  Serial.print(", holidayReminder=");
+  Serial.println(saved_holiday_reminder_minutes);
 }
 
 void savePrefs(String ssid, String pass, String endpoint, uint8_t stats,
                unsigned int refreshMinutes, float statCycleSeconds,
                unsigned int scrollSpeedMs, uint8_t displayBrightness,
                bool animationBrightnessBoost,
-               uint8_t animationBrightnessBoostAmount) {
+               uint8_t animationBrightnessBoostAmount,
+               unsigned int holidayReminderMinutes) {
   prefs.begin("ytcounter", false);
   prefs.putString("ssid", ssid);
   prefs.putString("pass", pass);
@@ -509,6 +528,7 @@ void savePrefs(String ssid, String pass, String endpoint, uint8_t stats,
   prefs.putUChar("brightness", displayBrightness);
   prefs.putBool("animBoost", animationBrightnessBoost);
   prefs.putUChar("animBoostAmt", animationBrightnessBoostAmount);
+  prefs.putUInt("holidayMin", holidayReminderMinutes);
   prefs.end();
 }
 
@@ -541,6 +561,8 @@ String buildPage() {
                saved_animation_brightness_boost ? "checked" : "");
   page.replace("ANIM_BOOST_AMOUNT_PLACEHOLDER",
                String(saved_animation_brightness_boost_amount));
+  page.replace("HOLIDAY_REMINDER_PLACEHOLDER",
+               String(saved_holiday_reminder_minutes));
   return page;
 }
 
@@ -608,6 +630,14 @@ void handleSave() {
     animationBrightnessBoostAmount = 15;
   }
 
+  int holidayReminderMinutes = server.arg("holidayReminder").toInt();
+  if (holidayReminderMinutes < 0) {
+    holidayReminderMinutes = 0;
+  }
+  if (holidayReminderMinutes > MAX_HOLIDAY_REMINDER_MINUTES) {
+    holidayReminderMinutes = MAX_HOLIDAY_REMINDER_MINUTES;
+  }
+
   String new_ssid = server.arg("ssid");
   new_ssid.trim();
   if (new_ssid.length() == 0) {
@@ -622,7 +652,8 @@ void handleSave() {
     new_pass = saved_pass;
   savePrefs(new_ssid, new_pass, endpoint, stats, refreshMinutes,
             statCycleSeconds, scrollSpeedMs, (uint8_t)displayBrightness,
-            animationBrightnessBoost, (uint8_t)animationBrightnessBoostAmount);
+            animationBrightnessBoost, (uint8_t)animationBrightnessBoostAmount,
+            (unsigned int)holidayReminderMinutes);
   server.send(200, "text/plain", "Saved! Rebooting now...");
   delay(1500);
   ESP.restart();
@@ -2195,7 +2226,7 @@ void loop() {
       display_lasttime = now;
     }
 
-    if (checkAndRunHolidayEasterEgg(Display)) {
+    if (checkAndRunHolidayEasterEgg(Display, saved_holiday_reminder_minutes)) {
       now = millis();
       if (selectedStatsCount() > 1) {
         startStatScrollIn();
