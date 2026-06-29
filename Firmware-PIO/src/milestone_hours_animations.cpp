@@ -544,8 +544,11 @@ static void hoursAnimTier1M(MD_Parola &display) {
   const int centerOx = ctx.cx;
   const int rightOx = ctx.cx + 10;
 
-  milestoneAnimSlowRingBuild(ctx, 11, 42);
-  delay(50);
+  milestoneAnimSlowRingBuild(ctx, 12, 40);
+  delay(60);
+  milestoneAnimDualEdgeClimb(ctx, 28);
+  milestoneAnimCounterShimmer(ctx, 8, 30);
+  delay(45);
 
   hoursAnimTripleBuildTogether(ctx, leftOx, centerOx, rightOx);
   hoursAnimTripleFill(ctx, leftOx, centerOx, rightOx);
@@ -553,14 +556,21 @@ static void hoursAnimTier1M(MD_Parola &display) {
   hoursRestoreTripleHold(ctx, leftOx, centerOx, rightOx, 75);
 
   hoursAnimTripleExplosionWave(ctx, leftOx, centerOx, rightOx);
+  milestoneAnimScreenShake(ctx, 6, 18);
+  hoursRestoreTripleHold(ctx, leftOx, centerOx, rightOx, 55);
 
-  const int fwX[8] = {1, ctx.width / 5, 2 * ctx.width / 5, ctx.cx, 3 * ctx.width / 5,
-                      4 * ctx.width / 5, ctx.width - 2, rightOx};
-  const int fwY[8] = {0, 3, 6, 1, 6, 3, 0, 2};
-  milestoneAnimFireworkBarrage(ctx, fwX, fwY, 8, 34, 2, 11, 0.7f, 30);
+  const int fwX[10] = {1, ctx.width / 6, ctx.width / 4, 2 * ctx.width / 5,
+                       ctx.cx, 3 * ctx.width / 5, 3 * ctx.width / 4,
+                       5 * ctx.width / 6, ctx.width - 2, rightOx};
+  const int fwY[10] = {0, 3, 6, 2, 1, 2, 6, 3, 0, 2};
+  milestoneAnimFireworkBarrage(ctx, fwX, fwY, 10, 38, 2, 12, 0.74f, 30);
   hoursRestoreTripleHold(ctx, leftOx, centerOx, rightOx, 65);
 
-  milestoneAnimShockwaveFlashes(ctx, 3, 38, 30);
+  const int chainX[5] = {2, leftOx, centerOx, rightOx, ctx.width - 3};
+  milestoneAnimChainExplosions(ctx, chainX, 5, 7, 26, 28);
+  hoursRestoreTripleHold(ctx, leftOx, centerOx, rightOx, 55);
+
+  milestoneAnimShockwaveFlashes(ctx, 4, 40, 32);
   hoursRestoreTripleHold(ctx, leftOx, centerOx, rightOx, 50);
 
   for (int pulse = 0; pulse < 4; pulse++) {
@@ -575,8 +585,9 @@ static void hoursAnimTier1M(MD_Parola &display) {
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 75, 15);
-  milestoneAnimInwardCollapse(ctx, 32);
+  milestoneFrameShow(ctx, 95, 15);
+  milestoneAnimFinalFlashes(ctx, 3, 60, 35, 125);
+  milestoneAnimInwardCollapse(ctx, 30);
   milestoneEffectEnd(ctx);
 }
 

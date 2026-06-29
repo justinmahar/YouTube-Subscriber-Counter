@@ -30,8 +30,13 @@
 #define WIFI_TIMEOUT_MS 15000
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
-const bool ENABLE_WOKWI_SETUP = true;
-const bool DISABLE_INTRO_AND_WIFI_INFO = true;
+const bool ENABLE_WOKWI_SETUP = false;
+const bool DISABLE_INTRO_AND_WIFI_INFO = false;
+
+// Set true to preview one hardcoded milestone before any other boot preview.
+const bool RUN_SINGLE_MILESTONE_PREVIEW_ON_BOOT = false;
+const MilestoneAnimation SINGLE_MILESTONE_PREVIEW_BOOT =
+    MilestoneAnimation::Hours1M;
 
 // Set true to cycle milestone animations on boot (dev preview).
 const bool PREVIEW_MILESTONES = false;
@@ -1921,7 +1926,9 @@ void setup() {
   Display.setTextAlignment(PA_CENTER);
 
   randomSeed(esp_random());
-  if (PREVIEW_HOLIDAYS) {
+  if (RUN_SINGLE_MILESTONE_PREVIEW_ON_BOOT) {
+    runMilestoneAnimation(Display, SINGLE_MILESTONE_PREVIEW_BOOT);
+  } else if (PREVIEW_HOLIDAYS) {
     runHolidayPreviewCycle(Display);
   } else if (RUN_HOLIDAY_PREVIEW_ON_BOOT) {
     runHolidayEasterEgg(Display, HOLIDAY_PREVIEW_BOOT);

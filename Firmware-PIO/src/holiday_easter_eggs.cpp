@@ -37,34 +37,117 @@ static time_t holidayServerTimeUnix = 0;
 static unsigned long holidayServerTimeMillis = 0;
 static unsigned long lastHolidayEggMs = 0;
 
-static void drawHolidayStar(MilestoneCtx &ctx, int cx, int cy, int radius) {
-  ctx.matrix->setPoint(cy, ctx.colStart + cx, true);
-  for (int step = 1; step <= radius; step++) {
-    if (cx - step >= 0) {
-      ctx.matrix->setPoint(cy, ctx.colStart + cx - step, true);
-    }
-    if (cx + step < ctx.width) {
-      ctx.matrix->setPoint(cy, ctx.colStart + cx + step, true);
-    }
-    if (cy - step >= 0) {
-      ctx.matrix->setPoint(cy - step, ctx.colStart + cx, true);
-    }
-    if (cy + step < ctx.height) {
-      ctx.matrix->setPoint(cy + step, ctx.colStart + cx, true);
-    }
-    if (step <= 2) {
-      if (cx - step >= 0 && cy - step >= 0) {
-        ctx.matrix->setPoint(cy - step, ctx.colStart + cx - step, true);
+static void drawHolidayZoomStar(MilestoneCtx &ctx, float outerRadiusX,
+                                float outerRadiusY, int zoomFrame) {
+  const int vertexCount = 10;
+  float vertexX[vertexCount];
+  float vertexY[vertexCount];
+  bool starPixels[8][32] = {{false}};
+  const float innerScale = 0.45f;
+
+  for (int i = 0; i < vertexCount; i++) {
+    float angle = -1.5707963f + i * 0.6283185f;
+    float scale = (i % 2 == 0) ? 1.0f : innerScale;
+    vertexX[i] = ctx.cx + cosf(angle) * outerRadiusX * scale;
+    vertexY[i] = ctx.cy + sinf(angle) * outerRadiusY * scale;
+  }
+
+  for (int row = 0; row < ctx.height; row++) {
+    const float sampleY[3] = {row + 0.25f, row + 0.5f, row + 0.75f};
+    for (int sample = 0; sample < 3; sample++) {
+      float intersections[vertexCount];
+      int intersectionCount = 0;
+
+      for (int i = 0, j = vertexCount - 1; i < vertexCount; j = i++) {
+        bool crosses =
+            (vertexY[i] > sampleY[sample]) != (vertexY[j] > sampleY[sample]);
+        if (!crosses) {
+          continue;
+        }
+
+        intersections[intersectionCount++] =
+            (vertexX[j] - vertexX[i]) * (sampleY[sample] - vertexY[i]) /
+                (vertexY[j] - vertexY[i]) +
+            vertexX[i];
       }
-      if (cx + step < ctx.width && cy - step >= 0) {
-        ctx.matrix->setPoint(cy - step, ctx.colStart + cx + step, true);
+
+      for (int i = 1; i < intersectionCount; i++) {
+        float key = intersections[i];
+        int j = i - 1;
+        while (j >= 0 && intersections[j] > key) {
+          intersections[j + 1] = intersections[j];
+          j--;
+        }
+        intersections[j + 1] = key;
       }
-      if (cx - step >= 0 && cy + step < ctx.height) {
-        ctx.matrix->setPoint(cy + step, ctx.colStart + cx - step, true);
+
+      for (int i = 0; i + 1 < intersectionCount; i += 2) {
+        float left = intersections[i];
+        float right = intersections[i + 1];
+        for (int col = 0; col < ctx.width; col++) {
+          float sampleX = col + 0.5f;
+          if (sampleX >= left && sampleX <= right) {
+            starPixels[row][col] = true;
+          }
+        }
       }
-      if (cx + step < ctx.width && cy + step < ctx.height) {
-        ctx.matrix->setPoint(cy + step, ctx.colStart + cx + step, true);
+    }
+  }
+
+  for (int row = 0; row < ctx.height; row++) {
+    for (int col = 0; col < ctx.width; col++) {
+      if (starPixels[row][col]) {
+        ctx.matrix->setPoint(row, ctx.colStart + col, true);
+        continue;
       }
+
+      bool left = col > 0 && starPixels[row][col - 1];
+      bool right = col + 1 < ctx.width && starPixels[row][col + 1];
+      bool up = row > 0 && starPixels[row - 1][col];
+      bool down = row + 1 < ctx.height && starPixels[row + 1][col];
+      bool upLeft = row > 0 && col > 0 && starPixels[row - 1][col - 1];
+      bool upRight =
+          row > 0 && col + 1 < ctx.width && starPixels[row - 1][col + 1];
+      bool downLeft =
+          row + 1 < ctx.height && col > 0 && starPixels[row + 1][col - 1];
+      bool downRight = row + 1 < ctx.height && col + 1 < ctx.width &&
+                       starPixels[row + 1][col + 1];
+
+      if ((left && right) || (up && down) || (upLeft && downRight) ||
+          (upRight && downLeft)) {
+        ctx.matrix->setPoint(row, ctx.colStart + col, true);
+      }
+    }
+  }
+
+  if (zoomFrame >= 14) {
+    const int patchWidth = 8;
+    const int patchHeight = 6;
+    int left = ctx.cx - patchWidth / 2;
+    int top = ctx.cy - patchHeight / 2;
+    for (int row = top; row < top + patchHeight; row++) {
+      if (row < 0 || row >= ctx.height) {
+        continue;
+      }
+      for (int col = left; col < left + patchWidth; col++) {
+        if (col >= 0 && col < ctx.width) {
+          ctx.matrix->setPoint(row, ctx.colStart + col, true);
+        }
+      }
+    }
+  }
+}
+
+static void drawHolidayBurstOverlay(MilestoneCtx &ctx, int originX, int originY,
+                                    int burstFrame, int particleCount,
+                                    float speed) {
+  for (int particle = 0; particle < particleCount; particle++) {
+    float angle = particle * (6.283185f / particleCount) + burstFrame * 0.1f;
+    int px = originX + (int)(burstFrame * cosf(angle) * speed);
+    int py = originY + (int)(burstFrame * sinf(angle) * speed);
+    if (px >= 0 && px < ctx.width && py >= 0 && py < ctx.height &&
+        (burstFrame % 2 == 0 || particle % 2 == 0)) {
+      ctx.matrix->setPoint(py, ctx.colStart + px, true);
     }
   }
 }
@@ -72,36 +155,112 @@ static void drawHolidayStar(MilestoneCtx &ctx, int cx, int cy, int radius) {
 static void runHolidayIntroAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 11);
 
-  for (int frame = 0; frame < ctx.width / 2 + 8; frame++) {
+  const int fountainX[5] = {2, ctx.width / 4, ctx.cx, 3 * ctx.width / 4,
+                            ctx.width - 3};
+  for (int frame = 0; frame < 22; frame++) {
     milestoneClear(ctx);
-    for (int c = 0; c < ctx.width; c++) {
-      int edgeDistance = min(c, ctx.width - 1 - c);
-      if (edgeDistance <= frame) {
-        ctx.matrix->setPoint(0, ctx.colStart + c, true);
-        ctx.matrix->setPoint(ctx.height - 1, ctx.colStart + c, true);
+    for (int i = 0; i < 5; i++) {
+      int launch = (i * 3) % 7;
+      int age = frame - launch;
+      if (age < 0) {
+        continue;
       }
-      if ((c + frame) % 5 == 0) {
-        int row = (frame + c * 3) % ctx.height;
-        ctx.matrix->setPoint(row, ctx.colStart + c, true);
+
+      int height = min(ctx.height - 1, age);
+      for (int trail = 0; trail < 4; trail++) {
+        int row = ctx.height - 1 - height + trail;
+        if (row >= 0 && row < ctx.height) {
+          ctx.matrix->setPoint(row, ctx.colStart + fountainX[i], trail < 2);
+        }
+      }
+
+      if (age > 4) {
+        int burstFrame = age - 4;
+        milestoneDrawFireworkBurst(ctx, fountainX[i], 1 + (i % 2), burstFrame,
+                                   8, 0.42f);
       }
     }
 
-    int radius = min(4, max(1, frame / 2));
-    drawHolidayStar(ctx, ctx.cx, ctx.cy, radius);
-    milestoneFrameShow(ctx, 36, min(15, 7 + frame / 3));
+    for (int c = 0; c < ctx.width; c++) {
+      if ((c * 3 + frame) % 11 == 0) {
+        ctx.matrix->setPoint((c + frame) % ctx.height, ctx.colStart + c, true);
+      }
+      if ((c + frame) % 7 == 0) {
+        ctx.matrix->setPoint((ctx.height - 1 + frame - c) % ctx.height,
+                             ctx.colStart + c, true);
+      }
+    }
+    milestoneFrameShow(ctx, 34, min(15, 8 + frame / 3));
   }
 
-  for (int pulse = 0; pulse < 3; pulse++) {
+  const int burstX[6] = {3, ctx.width / 5, 2 * ctx.width / 5,
+                         3 * ctx.width / 5, 4 * ctx.width / 5,
+                         ctx.width - 4};
+  const int burstY[6] = {1, 5, 2, 6, 1, 5};
+  for (int frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
-    drawHolidayStar(ctx, ctx.cx, ctx.cy, 4);
-    if (pulse % 2 == 0) {
-      for (int c = 0; c < ctx.width; c += 3) {
-        ctx.matrix->setPoint((c + pulse) % ctx.height, ctx.colStart + c, true);
+    for (int b = 0; b < 6; b++) {
+      int staggeredFrame = frame - b / 2;
+      if (staggeredFrame >= 0) {
+        milestoneDrawFireworkBurst(ctx, burstX[b], burstY[b], staggeredFrame,
+                                   10, 0.55f);
       }
     }
-    milestoneFrameShow(ctx, pulse == 2 ? 120 : 70, pulse % 2 == 0 ? 15 : 10);
+    for (int c = 0; c < ctx.width; c += 2) {
+      bool topChase = ((c + frame) % 6) < 3;
+      ctx.matrix->setPoint(0, ctx.colStart + c, topChase);
+      ctx.matrix->setPoint(ctx.height - 1, ctx.colStart + c, !topChase);
+    }
+    milestoneFrameShow(ctx, 38, frame % 2 == 0 ? 15 : 12);
+  }
+
+  for (int frame = 0; frame < 22; frame++) {
+    milestoneClear(ctx);
+    float progress = (frame + 1) / 22.0f;
+    float easedProgress = progress * progress * progress;
+    float outerRadiusX = 0.8f + easedProgress * (ctx.width * 1.35f);
+    float outerRadiusY = 0.6f + easedProgress * (ctx.height * 1.9f);
+    drawHolidayZoomStar(ctx, outerRadiusX, outerRadiusY, frame);
+
+    const int confettiBurstX[4] = {2, ctx.width - 3, ctx.width / 4,
+                                   3 * ctx.width / 4};
+    const int confettiBurstY[4] = {1, 6, 5, 2};
+    for (int burst = 0; burst < 4; burst++) {
+      drawHolidayBurstOverlay(ctx, confettiBurstX[burst],
+                              confettiBurstY[burst], frame + burst * 2, 8,
+                              0.48f);
+    }
+
+    for (int c = 0; c < ctx.width; c += 2) {
+      int row = (c * 3 + frame * 2) % ctx.height;
+      ctx.matrix->setPoint(row, ctx.colStart + c, true);
+      if (c % 4 == 0) {
+        int secondRow =
+            (ctx.height * 4 + ctx.height - 1 + frame - c / 2) % ctx.height;
+        ctx.matrix->setPoint(secondRow, ctx.colStart + c, true);
+      }
+    }
+    milestoneFrameShow(ctx, frame == 21 ? 180 : 32,
+                       min(15, 9 + frame / 2));
+  }
+
+  milestoneClear(ctx);
+  milestoneFillAll(ctx);
+  milestoneFrameShow(ctx, 160, 15);
+
+  for (int frame = 0; frame < 10; frame++) {
+    milestoneClear(ctx);
+    for (int row = 0; row < ctx.height; row++) {
+      for (int col = 0; col < ctx.width; col++) {
+        int dissolveOrder = (col * 7 + row * 11) % 10;
+        if (dissolveOrder >= frame) {
+          ctx.matrix->setPoint(row, ctx.colStart + col, true);
+        }
+      }
+    }
+    milestoneFrameShow(ctx, frame == 9 ? 90 : 38, max(2, 15 - frame));
   }
 
   milestoneEffectEnd(ctx);
@@ -309,11 +468,13 @@ void runHolidayPreviewCycle(MD_Parola &display) {
       HolidayId::StPatricksDay,    HolidayId::Easter,
       HolidayId::AprilFools,       HolidayId::EarthDay,
       HolidayId::CincoDeMayo,      HolidayId::MemorialDay,
-      HolidayId::FathersDay,       HolidayId::CreatorCatDay,
-      HolidayId::LaborDay,         HolidayId::PirateDay,
+      HolidayId::FathersDay,       HolidayId::JulyFourth,
+      HolidayId::CreatorCatDay,    HolidayId::JustinBirthday,
+      HolidayId::DadBirthday,      HolidayId::LaborDay,
+      HolidayId::PirateDay,
       HolidayId::CoffeeDay,
       HolidayId::Halloween,        HolidayId::VeteransDay,
-      HolidayId::Thanksgiving,
+      HolidayId::Thanksgiving,     HolidayId::Christmas,
   };
 
   for (HolidayId holiday : previewOrder) {

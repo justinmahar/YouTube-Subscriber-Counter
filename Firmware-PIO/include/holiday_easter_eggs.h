@@ -33,7 +33,7 @@ enum class HolidayId : uint8_t {
 };
 
 // Set true to cycle every holiday animation on boot (dev preview).
-const bool PREVIEW_HOLIDAYS = true;
+const bool PREVIEW_HOLIDAYS = false;
 
 // Set true to preview a single holiday on boot (when PREVIEW_HOLIDAYS is false).
 const bool RUN_HOLIDAY_PREVIEW_ON_BOOT = false;
