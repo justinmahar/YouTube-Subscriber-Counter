@@ -110,26 +110,26 @@ static void drawSeedRain(MilestoneCtx &ctx, uint8_t frame) {
 void runEarthDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 20; frame++) {
     milestoneClear(ctx);
     drawGlobe(ctx, ctx.cx, frame);
-    milestoneFrameShow(ctx, 62, 7 + frame % 5);
+    milestoneFrameShow(ctx, 62, frame % 5);
   }
 
   for (uint8_t grow = 1; grow <= 5; grow++) {
     milestoneClear(ctx);
     drawSeedRain(ctx, grow);
     drawSprout(ctx, ctx.cx, grow, grow);
-    milestoneFrameShow(ctx, 150, 8 + grow);
+    milestoneFrameShow(ctx, 150, grow);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
     milestoneClear(ctx);
     drawSprout(ctx, ctx.cx, 5, frame);
     drawRecycleArrow(ctx, ctx.cx, 4, frame);
-    milestoneFrameShow(ctx, 55, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 55, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 12; frame++) {
@@ -138,7 +138,7 @@ void runEarthDayHolidayAnimation(MD_Parola &display) {
     drawSparkle(ctx, ctx.cx - 12 + frame * 2, 2 + frame % 4,
                 frame % 2 == 0);
     drawSparkle(ctx, ctx.cx + 12 - frame, 5 - frame % 3, frame % 2 == 1);
-    milestoneFrameShow(ctx, 60, frame % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 60, frame % 2 == 0 ? 5 : 0);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -150,7 +150,7 @@ void runEarthDayHolidayAnimation(MD_Parola &display) {
       drawSprout(ctx, ctx.cx, 5, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 55 : 95,
-                       flash % 2 == 0 ? 15 : 8);
+                       flash % 2 == 0 ? 7 : 0);
   }
 
   milestoneEffectEnd(ctx);

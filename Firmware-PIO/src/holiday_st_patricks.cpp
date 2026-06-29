@@ -169,7 +169,7 @@ static void drawGoldCoin(MilestoneCtx &ctx, int centerX, int centerY, int size) 
 void runStPatricksHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 10);
+  milestoneEffectBegin(ctx, 0);
 
   struct Coin {
     int x;
@@ -193,14 +193,14 @@ void runStPatricksHolidayAnimation(MD_Parola &display) {
       }
       drawGoldCoin(ctx, coins[i].x, coins[i].y, coins[i].size);
     }
-    milestoneFrameShow(ctx, 42, 11);
+    milestoneFrameShow(ctx, 42, 0);
   }
 
   for (uint8_t fill = 0; fill <= 5; fill++) {
     for (uint8_t shimmer = 0; shimmer < 2; shimmer++) {
       milestoneClear(ctx);
       drawBeerMug(ctx, ctx.cx - 6, fill, fill + shimmer);
-      milestoneFrameShow(ctx, 85, 10 + fill);
+      milestoneFrameShow(ctx, 85, fill);
     }
   }
   for (int cheers = 0; cheers < 3; cheers++) {
@@ -209,13 +209,13 @@ void runStPatricksHolidayAnimation(MD_Parola &display) {
     ctx.matrix->setPoint(1, ctx.colStart + max(0, ctx.cx - 10), true);
     ctx.matrix->setPoint(2, ctx.colStart + min(ctx.width - 1, ctx.cx + 10),
                          true);
-    milestoneFrameShow(ctx, 120, cheers % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 120, cheers % 2 == 0 ? 6 : 0);
   }
 
   for (int frame = 0; frame < 6; frame++) {
     milestoneClear(ctx);
     drawMiniPot(ctx, ctx.cx - 4, 3, frame % 2 == 0);
-    milestoneFrameShow(ctx, 115, frame % 2 == 0 ? 14 : 8);
+    milestoneFrameShow(ctx, 115, frame % 2 == 0 ? 6 : 0);
   }
 
   int shamLeft = ctx.cx - SHAMROCK_WIDTH / 2;
@@ -223,7 +223,7 @@ void runStPatricksHolidayAnimation(MD_Parola &display) {
   for (uint8_t stage = 0; stage < 4; stage++) {
     milestoneClear(ctx);
     drawShamrock(ctx, shamLeft, shamTop, stage, false);
-    milestoneFrameShow(ctx, 220, 13);
+    milestoneFrameShow(ctx, 220, 0);
   }
 
   for (int pulse = 0; pulse < 3; pulse++) {
@@ -234,9 +234,9 @@ void runStPatricksHolidayAnimation(MD_Parola &display) {
       ctx.matrix->setPoint(1, ctx.colStart + min(ctx.width - 1, shamLeft + 16),
                            true);
     }
-    milestoneFrameShow(ctx, 120, pulse % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 120, pulse % 2 == 0 ? 6 : 0);
     milestoneClear(ctx);
-    milestoneFrameShow(ctx, 70, 4);
+    milestoneFrameShow(ctx, 70, 0);
   }
 
   for (int burst = 0; burst < 10; burst++) {
@@ -250,7 +250,7 @@ void runStPatricksHolidayAnimation(MD_Parola &display) {
         ctx.matrix->setPoint(py, ctx.colStart + px, burst % 2 == 0);
       }
     }
-    milestoneFrameShow(ctx, 45, min(15, 8 + burst));
+    milestoneFrameShow(ctx, 45, min(7, (int)burst));
   }
 
   milestoneEffectEnd(ctx);

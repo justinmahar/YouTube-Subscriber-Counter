@@ -1,5 +1,6 @@
 #include "holiday_easter_eggs.h"
 
+#include "firmware_config.h"
 #include "holiday_april_fools.h"
 #include "holiday_birthdays.h"
 #include "holiday_christmas.h"
@@ -155,7 +156,7 @@ static void drawHolidayBurstOverlay(MilestoneCtx &ctx, int originX, int originY,
 static void runHolidayIntroAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 11);
+  milestoneEffectBegin(ctx, 0);
 
   const int fountainX[5] = {2, ctx.width / 4, ctx.cx, 3 * ctx.width / 4,
                             ctx.width - 3};
@@ -192,7 +193,7 @@ static void runHolidayIntroAnimation(MD_Parola &display) {
                              ctx.colStart + c, true);
       }
     }
-    milestoneFrameShow(ctx, 34, min(15, 8 + frame / 3));
+    milestoneFrameShow(ctx, 34, min(7, frame / 3));
   }
 
   const int burstX[6] = {3, ctx.width / 5, 2 * ctx.width / 5,
@@ -213,7 +214,7 @@ static void runHolidayIntroAnimation(MD_Parola &display) {
       ctx.matrix->setPoint(0, ctx.colStart + c, topChase);
       ctx.matrix->setPoint(ctx.height - 1, ctx.colStart + c, !topChase);
     }
-    milestoneFrameShow(ctx, 38, frame % 2 == 0 ? 15 : 12);
+    milestoneFrameShow(ctx, 38, frame % 2 == 0 ? 3 : 0);
   }
 
   for (int frame = 0; frame < 22; frame++) {
@@ -243,12 +244,12 @@ static void runHolidayIntroAnimation(MD_Parola &display) {
       }
     }
     milestoneFrameShow(ctx, frame == 21 ? 180 : 32,
-                       min(15, 9 + frame / 2));
+                       min(6, frame / 2));
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 160, 15);
+  milestoneFrameShow(ctx, 160, 0);
 
   for (int frame = 0; frame < 10; frame++) {
     milestoneClear(ctx);
@@ -260,7 +261,7 @@ static void runHolidayIntroAnimation(MD_Parola &display) {
         }
       }
     }
-    milestoneFrameShow(ctx, frame == 9 ? 90 : 38, max(2, 15 - frame));
+    milestoneFrameShow(ctx, frame == 9 ? 90 : 38, max(0, 13 - frame));
   }
 
   milestoneEffectEnd(ctx);
@@ -270,7 +271,7 @@ static void runHolidayIntroAnimation(MD_Parola &display) {
   matrix->clear();
   matrix->update();
   display.displayClear();
-  display.setIntensity(11);
+  display.setIntensity(animationDisplayIntensity(0));
   display.setTextAlignment(PA_LEFT);
   display.displayScroll("Holiday!", PA_LEFT, PA_SCROLL_LEFT, 60);
   while (!display.displayAnimate()) {
@@ -481,7 +482,7 @@ void runHolidayPreviewCycle(MD_Parola &display) {
 }
 
 void runHolidayEasterEgg(MD_Parola &display, HolidayId holiday) {
-  if (holiday != HolidayId::None) {
+  if (holiday != HolidayId::None && !DEBUG_DISABLE_ANIMATION_INTROS) {
     runHolidayIntroAnimation(display);
   }
 

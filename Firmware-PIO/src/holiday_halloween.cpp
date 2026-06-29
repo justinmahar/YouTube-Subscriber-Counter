@@ -74,7 +74,7 @@ static void drawPumpkin(MilestoneCtx &ctx, int leftCol, uint8_t revealRows,
 void runHalloweenHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 6);
+  milestoneEffectBegin(ctx, 0);
 
   for (int frame = 0; frame < 24; frame++) {
     milestoneClear(ctx);
@@ -83,14 +83,14 @@ void runHalloweenHolidayAnimation(MD_Parola &display) {
     if (frame % 4 == 0) {
       setHolidayPixel(ctx, random(ctx.width), random(ctx.height));
     }
-    milestoneFrameShow(ctx, 55, 5 + frame % 4);
+    milestoneFrameShow(ctx, 55, frame % 4);
   }
 
   int pumpkinLeft = ctx.cx - 8;
   for (uint8_t reveal = 1; reveal <= 8; reveal++) {
     milestoneClear(ctx);
     drawPumpkin(ctx, pumpkinLeft, reveal, 0);
-    milestoneFrameShow(ctx, 95, 8 + reveal);
+    milestoneFrameShow(ctx, 95, reveal);
   }
 
   for (int flicker = 0; flicker < 8; flicker++) {
@@ -100,7 +100,7 @@ void runHalloweenHolidayAnimation(MD_Parola &display) {
       drawBat(ctx, 1, 0, flicker);
       drawBat(ctx, ctx.width - 9, 0, flicker + 1);
     }
-    milestoneFrameShow(ctx, 115, flicker % 2 == 0 ? 15 : 7);
+    milestoneFrameShow(ctx, 115, flicker % 2 == 0 ? 8 : 0);
   }
 
   for (int burst = 0; burst < 12; burst++) {
@@ -112,7 +112,7 @@ void runHalloweenHolidayAnimation(MD_Parola &display) {
       int py = 4 + (int)(burst * sinf(angle) * 0.55f);
       setHolidayPixel(ctx, px, py, burst % 2 == 0 || spark % 3 == 0);
     }
-    milestoneFrameShow(ctx, 42, min(15, 8 + burst));
+    milestoneFrameShow(ctx, 42, min(7, (int)burst));
   }
 
   milestoneEffectEnd(ctx);

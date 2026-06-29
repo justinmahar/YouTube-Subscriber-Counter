@@ -108,25 +108,25 @@ static void drawOrbitingDots(MilestoneCtx &ctx, uint8_t frame) {
 void runPiDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawDigitRain(ctx, frame);
-    milestoneFrameShow(ctx, 55, 7 + frame % 5);
+    milestoneFrameShow(ctx, 55, frame % 5);
   }
 
   for (uint8_t reveal = 1; reveal <= 8; reveal++) {
     milestoneClear(ctx);
     drawPiSymbol(ctx, ctx.cx, reveal, reveal);
-    milestoneFrameShow(ctx, 115, 8 + reveal);
+    milestoneFrameShow(ctx, 115, reveal);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawPiSymbol(ctx, ctx.cx, 8, frame);
     drawOrbitingDots(ctx, frame);
-    milestoneFrameShow(ctx, 50, frame % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 50, frame % 2 == 0 ? 5 : 0);
   }
 
   for (uint8_t frame = 0; frame < 12; frame++) {
@@ -135,7 +135,7 @@ void runPiDayHolidayAnimation(MD_Parola &display) {
     if (frame % 2 == 0) {
       drawOrbitingDots(ctx, frame);
     }
-    milestoneFrameShow(ctx, 90, frame % 2 == 0 ? 15 : 8);
+    milestoneFrameShow(ctx, 90, frame % 2 == 0 ? 7 : 0);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -146,7 +146,7 @@ void runPiDayHolidayAnimation(MD_Parola &display) {
       drawPiDigits(ctx, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 55 : 95,
-                       flash % 2 == 0 ? 15 : 8);
+                       flash % 2 == 0 ? 7 : 0);
   }
 
   milestoneEffectEnd(ctx);

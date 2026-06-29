@@ -144,7 +144,7 @@ static void drawWreath(MilestoneCtx &ctx, int cx, int cy, uint8_t frame) {
 void runMemorialDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 7);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 10; frame++) {
     milestoneClear(ctx);
@@ -158,13 +158,13 @@ void runMemorialDayHolidayAnimation(MD_Parola &display) {
         }
       }
     }
-    milestoneFrameShow(ctx, 95, 8);
+    milestoneFrameShow(ctx, 95, 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawFlagAtHalfStaff(ctx, frame);
-    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 12 : 8);
+    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 4 : 0);
   }
 
   for (uint8_t reveal = 0; reveal < 12; reveal++) {
@@ -174,21 +174,21 @@ void runMemorialDayHolidayAnimation(MD_Parola &display) {
     if (reveal > 3) {
       drawTombstone(ctx, ctx.cx + 3, 1);
     }
-    milestoneFrameShow(ctx, 120, 7 + reveal / 2);
+    milestoneFrameShow(ctx, 120, reveal / 2);
   }
 
   for (uint8_t frame = 0; frame < 14; frame++) {
     milestoneClear(ctx);
     drawRipText(ctx, ctx.cx - 8, 1);
     drawLargePoppy(ctx, ctx.cx + 12, 2, frame);
-    milestoneFrameShow(ctx, 130, frame % 2 == 0 ? 13 : 8);
+    milestoneFrameShow(ctx, 130, frame % 2 == 0 ? 5 : 0);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
     milestoneClear(ctx);
     drawFlagAtHalfStaff(ctx, frame, true);
     drawWreath(ctx, ctx.cx + 10, 3, frame);
-    milestoneFrameShow(ctx, 110, frame % 2 == 0 ? 11 : 7);
+    milestoneFrameShow(ctx, 110, frame % 2 == 0 ? 4 : 0);
   }
 
   milestoneEffectEnd(ctx);

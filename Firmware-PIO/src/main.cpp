@@ -17,6 +17,7 @@
 #include "FontSubs.h"
 #include "holiday_easter_eggs.h"
 #include "milestone_animations.h"
+#include "milestone_helpers.h"
 
 // Hardware config
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
@@ -35,6 +36,9 @@ const bool DISABLE_INTRO_AND_WIFI_INFO = false;
 
 // Set true to simulate a WiFi drop after the first successful stats fetch.
 const bool DEBUG_SIMULATE_WIFI_DROP_AFTER_FIRST_STATS_FETCH = false;
+
+// Set true to skip milestone/holiday intro animations before themed sequences.
+extern const bool DEBUG_DISABLE_ANIMATION_INTROS = false;
 
 // Set true to preview one hardcoded milestone before any other boot preview.
 const bool RUN_SINGLE_MILESTONE_PREVIEW_ON_BOOT = false;
@@ -108,6 +112,8 @@ uint8_t saved_stats = STAT_SUBSCRIBERS;
 unsigned int saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
 float saved_stat_cycle_seconds = DEFAULT_STAT_CYCLE_SECONDS;
 unsigned int saved_scroll_speed_ms = DEFAULT_SCROLL_SPEED_MS;
+bool saved_animation_brightness_boost = false;
+uint8_t saved_animation_brightness_boost_amount = 0;
 bool configMode = false;
 bool captivePortalActive = false;
 char setupMacSuffix[5] = "";
@@ -242,6 +248,17 @@ const char CONFIG_HTML[] PROGMEM = R"rawhtml(
       <input type="number" id="stat-cycle" step="any" value="STAT_CYCLE_PLACEHOLDER">
       <div class="hint">How long each stat is shown when cycling (scroll-in and value).</div>
     </div>
+    <div class="divider"></div>
+    <div class="section">Animations</div>
+    <div>
+      <label class="check"><input type="checkbox" id="anim-boost" ANIM_BOOST_CHECKED><span>Animation brightness boost</span></label>
+      <div class="hint">When off, animations use the same minimum brightness as regular stats.</div>
+    </div>
+    <div>
+      <label>Animation brightness boost amount</label>
+      <input type="number" id="anim-boost-amount" min="0" max="15" step="1" value="ANIM_BOOST_AMOUNT_PLACEHOLDER">
+      <div class="hint">Adds 0-15 brightness steps to normalized animation frames.</div>
+    </div>
     <div>
       <label>Refresh rate (minutes)</label>
       <input type="number" id="refresh" min="1" max="1440" step="1" value="REFRESH_PLACEHOLDER">
@@ -273,6 +290,8 @@ function persistSetupForm(){
       statHours:document.getElementById('stat-hours').checked,
       scrollSpeed:document.getElementById('scroll-speed').value,
       statCycle:document.getElementById('stat-cycle').value,
+      animationBoost:document.getElementById('anim-boost').checked,
+      animationBoostAmount:document.getElementById('anim-boost-amount').value,
       refresh:document.getElementById('refresh').value
     }));
   }catch(e){}
@@ -289,14 +308,16 @@ function restoreSetupForm(){
     if(d.statHours!=null)document.getElementById('stat-hours').checked=!!d.statHours;
     if(d.scrollSpeed!=null)document.getElementById('scroll-speed').value=d.scrollSpeed;
     if(d.statCycle!=null)document.getElementById('stat-cycle').value=d.statCycle;
+    if(d.animationBoost!=null)document.getElementById('anim-boost').checked=!!d.animationBoost;
+    if(d.animationBoostAmount!=null)document.getElementById('anim-boost-amount').value=d.animationBoostAmount;
     if(d.refresh!=null)document.getElementById('refresh').value=d.refresh;
   }catch(e){}
 }
 function bindSetupPersist(){
-  ['ssid','endpoint','scroll-speed','stat-cycle','refresh'].forEach(function(id){
+  ['ssid','endpoint','scroll-speed','stat-cycle','anim-boost-amount','refresh'].forEach(function(id){
     document.getElementById(id).addEventListener('input',persistSetupForm);
   });
-  ['stat-subs','stat-views','stat-hours'].forEach(function(id){
+  ['stat-subs','stat-views','stat-hours','anim-boost'].forEach(function(id){
     document.getElementById(id).addEventListener('change',persistSetupForm);
   });
 }
@@ -350,6 +371,8 @@ function save(){
   var r=parseInt(document.getElementById('refresh').value,10);
   var scrollSpeed=parseInt(document.getElementById('scroll-speed').value,10);
   var statCycle=parseFloat(document.getElementById('stat-cycle').value);
+  var animBoost=document.getElementById('anim-boost').checked;
+  var animBoostAmount=parseInt(document.getElementById('anim-boost-amount').value,10);
   var stats=0;
   if(document.getElementById('stat-subs').checked)stats|=1;
   if(document.getElementById('stat-views').checked)stats|=2;
@@ -360,11 +383,12 @@ function save(){
   if(!stats){msg.className='msg err';msg.textContent='Choose at least one stat to show.';return;}
   if(!scrollSpeed||scrollSpeed<=0){msg.className='msg err';msg.textContent='Scroll speed must be greater than 0.';return;}
   if(!statCycle||statCycle<=0){msg.className='msg err';msg.textContent='Value display time must be greater than 0.';return;}
+  if(isNaN(animBoostAmount)||animBoostAmount<0||animBoostAmount>15){msg.className='msg err';msg.textContent='Animation brightness boost amount must be 0-15.';return;}
   if(!r||r<1){msg.className='msg err';msg.textContent='Refresh rate must be at least 1 minute.';return;}
   persistSetupForm();
   msg.className='msg ok';msg.textContent='Saving\u2026 device will reboot and connect.';
   fetch('/save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r+'&scrollSpeed='+scrollSpeed+'&statCycle='+statCycle})
+    body:'ssid='+encodeURIComponent(s)+'&pass='+encodeURIComponent(p)+'&endpoint='+encodeURIComponent(e)+'&stats='+stats+'&refresh='+r+'&scrollSpeed='+scrollSpeed+'&statCycle='+statCycle+'&animBoost='+(animBoost?1:0)+'&animBoostAmount='+animBoostAmount})
   .then(r=>r.text()).then(t=>{msg.textContent=t;});
 }
 function uploadFirmware(){
@@ -425,6 +449,8 @@ void loadPrefs() {
   if (saved_scroll_speed_ms == 0) {
     saved_scroll_speed_ms = DEFAULT_SCROLL_SPEED_MS;
   }
+  saved_animation_brightness_boost = prefs.getBool("animBoost", false);
+  saved_animation_brightness_boost_amount = prefs.getUChar("animBoostAmt", 0);
   prefs.end();
 
   if (saved_stats == 0)
@@ -433,18 +459,25 @@ void loadPrefs() {
     saved_refresh_minutes = DEFAULT_REFRESH_MINUTES;
   if (saved_refresh_minutes > MAX_REFRESH_MINUTES)
     saved_refresh_minutes = MAX_REFRESH_MINUTES;
+  if (saved_animation_brightness_boost_amount > 15)
+    saved_animation_brightness_boost_amount = 15;
 
   Serial.print("Config loaded: ssid=");
   Serial.print(saved_ssid.length() ? saved_ssid : "(empty)");
   Serial.print(", endpoint=");
   Serial.print(saved_endpoint.length() ? "set" : "empty");
   Serial.print(", stats=");
-  Serial.println(saved_stats);
+  Serial.print(saved_stats);
+  Serial.print(", animBoost=");
+  Serial.print(saved_animation_brightness_boost ? "on" : "off");
+  Serial.print(", animBoostAmount=");
+  Serial.println(saved_animation_brightness_boost_amount);
 }
 
 void savePrefs(String ssid, String pass, String endpoint, uint8_t stats,
                unsigned int refreshMinutes, float statCycleSeconds,
-               unsigned int scrollSpeedMs) {
+               unsigned int scrollSpeedMs, bool animationBrightnessBoost,
+               uint8_t animationBrightnessBoostAmount) {
   prefs.begin("ytcounter", false);
   prefs.putString("ssid", ssid);
   prefs.putString("pass", pass);
@@ -453,6 +486,8 @@ void savePrefs(String ssid, String pass, String endpoint, uint8_t stats,
   prefs.putUInt("refresh", refreshMinutes);
   prefs.putFloat("statCycle", statCycleSeconds);
   prefs.putUInt("scrollSpeed", scrollSpeedMs);
+  prefs.putBool("animBoost", animationBrightnessBoost);
+  prefs.putUChar("animBoostAmt", animationBrightnessBoostAmount);
   prefs.end();
 }
 
@@ -480,6 +515,10 @@ String buildPage() {
   page.replace("REFRESH_PLACEHOLDER", String(saved_refresh_minutes));
   page.replace("STAT_CYCLE_PLACEHOLDER", String(saved_stat_cycle_seconds, 3));
   page.replace("SCROLL_SPEED_PLACEHOLDER", String(saved_scroll_speed_ms));
+  page.replace("ANIM_BOOST_CHECKED",
+               saved_animation_brightness_boost ? "checked" : "");
+  page.replace("ANIM_BOOST_AMOUNT_PLACEHOLDER",
+               String(saved_animation_brightness_boost_amount));
   return page;
 }
 
@@ -530,6 +569,15 @@ void handleSave() {
     return;
   }
 
+  bool animationBrightnessBoost = server.arg("animBoost").toInt() != 0;
+  int animationBrightnessBoostAmount = server.arg("animBoostAmount").toInt();
+  if (animationBrightnessBoostAmount < 0) {
+    animationBrightnessBoostAmount = 0;
+  }
+  if (animationBrightnessBoostAmount > 15) {
+    animationBrightnessBoostAmount = 15;
+  }
+
   String new_ssid = server.arg("ssid");
   new_ssid.trim();
   if (new_ssid.length() == 0) {
@@ -543,7 +591,8 @@ void handleSave() {
   if (new_pass.length() == 0)
     new_pass = saved_pass;
   savePrefs(new_ssid, new_pass, endpoint, stats, refreshMinutes,
-            statCycleSeconds, scrollSpeedMs);
+            statCycleSeconds, scrollSpeedMs, animationBrightnessBoost,
+            (uint8_t)animationBrightnessBoostAmount);
   server.send(200, "text/plain", "Saved! Rebooting now...");
   delay(1500);
   ESP.restart();
@@ -1765,7 +1814,7 @@ static void bootShowCenteredText(const char *text, uint16_t holdMs) {
   matrix->update();
   Display.displayClear();
   Display.setTextAlignment(PA_CENTER);
-  Display.setIntensity(12);
+  Display.setIntensity(animationDisplayIntensity(0));
   Display.print(text);
   delay(holdMs);
   matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
@@ -1798,7 +1847,7 @@ static void bootAnimRain(MD_MAX72XX *matrix, uint16_t colStart, uint16_t colEnd,
         }
       }
     }
-    Display.setIntensity(min(15, 1 + frame / 3));
+    Display.setIntensity(animationDisplayIntensity(frame / 3));
     matrix->update();
     delay(26);
   }
@@ -1829,7 +1878,7 @@ static void bootAnimPlasma(MD_MAX72XX *matrix, uint16_t colStart, int width,
         }
       }
     }
-    Display.setIntensity(min(15, 4 + frame / 4));
+    Display.setIntensity(animationDisplayIntensity(frame / 4));
     matrix->update();
     delay(28);
   }
@@ -1863,7 +1912,7 @@ static void bootAnimSpectrum(MD_MAX72XX *matrix, uint16_t colStart, int width,
         drawPixel(col, row, true);
       }
     }
-    Display.setIntensity(13);
+    Display.setIntensity(animationDisplayIntensity(0));
     matrix->update();
     delay(32);
   }
@@ -1892,7 +1941,8 @@ static void bootAnimFinale(MD_MAX72XX *matrix, uint16_t colStart,
         }
       }
     }
-    Display.setIntensity(max(3, 14 - abs(sweep - width / 2) / 3));
+    Display.setIntensity(animationDisplayIntensity(
+        max(0, 11 - abs(sweep - width / 2) / 3)));
     matrix->update();
     delay(20);
   }
@@ -1903,7 +1953,7 @@ static void bootAnimFinale(MD_MAX72XX *matrix, uint16_t colStart,
     }
   }
   matrix->update();
-  Display.setIntensity(15);
+  Display.setIntensity(animationDisplayIntensity(12));
   delay(45);
 
   for (int frame = 0; frame < 18; frame++) {
@@ -1915,7 +1965,7 @@ static void bootAnimFinale(MD_MAX72XX *matrix, uint16_t colStart,
       }
     }
     matrix->update();
-    Display.setIntensity(max(0, 14 - frame));
+    Display.setIntensity(animationDisplayIntensity(max(0, 11 - frame)));
     delay(22);
   }
 }
@@ -1989,22 +2039,27 @@ void setup() {
   Display.setFont(fontSubs);
   Display.setTextAlignment(PA_CENTER);
 
+  loadPrefs();
+  animationBrightnessConfigure(saved_animation_brightness_boost,
+                               saved_animation_brightness_boost_amount);
+
   randomSeed(esp_random());
+  if (!DISABLE_INTRO_AND_WIFI_INFO) {
+    runBootAnimation();
+  }
   if (RUN_SINGLE_MILESTONE_PREVIEW_ON_BOOT) {
     runMilestoneAnimation(Display, SINGLE_MILESTONE_PREVIEW_BOOT);
-  } else if (PREVIEW_HOLIDAYS) {
-    runHolidayPreviewCycle(Display);
-  } else if (RUN_HOLIDAY_PREVIEW_ON_BOOT) {
-    runHolidayEasterEgg(Display, HOLIDAY_PREVIEW_BOOT);
-  } else if (PREVIEW_MILESTONES) {
+  }
+  if (PREVIEW_MILESTONES) {
     for (MilestoneAnimation anim : MILESTONE_BOOT_PREVIEW) {
       runMilestoneAnimation(Display, anim);
     }
-  } else if (!DISABLE_INTRO_AND_WIFI_INFO) {
-    runBootAnimation();
   }
-
-  loadPrefs();
+  if (PREVIEW_HOLIDAYS) {
+    runHolidayPreviewCycle(Display);
+  } else if (RUN_HOLIDAY_PREVIEW_ON_BOOT) {
+    runHolidayEasterEgg(Display, HOLIDAY_PREVIEW_BOOT);
+  }
 
   bool hasCredentials =
       (saved_ssid.length() > 0 && saved_endpoint.length() > 0 &&

@@ -42,7 +42,7 @@ static void viewsAnimReticleLock(MilestoneCtx &ctx, int tx, int ty) {
       viewsDrawReticle(ctx, tx - 8, ty, arm - 3);
       viewsDrawReticle(ctx, tx + 8, ty, arm - 3);
     }
-    milestoneFrameShow(ctx, 38, min(15, 8 + arm));
+    milestoneFrameShow(ctx, 38, min(7, (int)arm));
   }
 }
 
@@ -67,13 +67,13 @@ static void viewsAnimNovaDetonation(MilestoneCtx &ctx, int ox, int oy, int maxR)
       viewsDrawNova(ctx, ox, oy, r - 2);
     }
     milestoneDrawFireworkBurst(ctx, ox, oy, r, 10, 0.35f);
-    milestoneFrameShow(ctx, r < maxR / 2 ? 22 : 32, min(15, 7 + r));
+    milestoneFrameShow(ctx, r < maxR / 2 ? 22 : 32, min(8, (int)r));
   }
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 45, 15);
+  milestoneFrameShow(ctx, 45, 0);
   milestoneClear(ctx);
-  milestoneFrameShow(ctx, 30, 4);
+  milestoneFrameShow(ctx, 30, 0);
 }
 
 static void viewsDrawShrapnel(MilestoneCtx &ctx, int ox, int oy, int reach) {
@@ -97,7 +97,7 @@ static void viewsAnimShrapnelBurst(MilestoneCtx &ctx, int ox, int oy) {
     viewsDrawShrapnel(ctx, ox, oy, reach);
     viewsDrawShrapnel(ctx, ox - 8, oy, max(2, reach - 2));
     viewsDrawShrapnel(ctx, ox + 8, oy, max(2, reach - 2));
-    milestoneFrameShow(ctx, reach < 8 ? 24 : 30, min(15, 6 + reach / 2));
+    milestoneFrameShow(ctx, reach < 8 ? 24 : 30, min(9, reach / 2));
   }
 }
 
@@ -135,7 +135,7 @@ static void viewsAnimGridDetonation(MilestoneCtx &ctx) {
         viewsDrawShrapnel(ctx, cx, cy, blast + 2);
       }
     }
-    milestoneFrameShow(ctx, 32, min(15, 9 + step));
+    milestoneFrameShow(ctx, 32, min(6, (int)step));
   }
 }
 
@@ -180,14 +180,14 @@ static void viewsAnimGravityWell(MilestoneCtx &ctx) {
     if (frame >= steps - 3) {
       milestoneDrawDiamondRing(ctx, steps - frame + 1);
     }
-    milestoneFrameShow(ctx, 26, min(15, 8 + frame));
+    milestoneFrameShow(ctx, 26, min(7, (int)frame));
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 35, 15);
+  milestoneFrameShow(ctx, 35, 0);
   milestoneClear(ctx);
-  milestoneFrameShow(ctx, 25, 5);
+  milestoneFrameShow(ctx, 25, 0);
 }
 
 // Almond-shaped eye outline with optional pupil.
@@ -317,7 +317,7 @@ static void viewsAnimEyeShockwave(MilestoneCtx &ctx) {
     if (wave > 10 && wave % 2 == 0) {
       milestoneDrawFireworkBurst(ctx, ctx.cx, ctx.cy, wave, 8, 0.32f);
     }
-    milestoneFrameShow(ctx, wave < maxWave / 2 ? 30 : 36, min(15, 7 + wave / 2));
+    milestoneFrameShow(ctx, wave < maxWave / 2 ? 30 : 36, min(8, wave / 2));
   }
 }
 
@@ -366,13 +366,13 @@ static void viewsAnimTwinGravityWell(MilestoneCtx &ctx) {
       if (frame >= steps - 2) {
         milestoneDrawDiamondRing(ctx, steps - frame + 1);
       }
-      milestoneFrameShow(ctx, 22, min(15, 9 + frame));
+      milestoneFrameShow(ctx, 22, min(6, (int)frame));
     }
     if (phase == 0) {
       milestoneClear(ctx);
       viewsDrawNova(ctx, leftCx, ctx.cy, 4);
       viewsDrawNova(ctx, rightCx, ctx.cy, 4);
-      milestoneFrameShow(ctx, 60, 15);
+      milestoneFrameShow(ctx, 60, 0);
       for (int i = 0; i < count; i++) {
         px[i] = i % 2 == 0 ? leftCx : rightCx;
         py[i] = ctx.cy;
@@ -382,9 +382,9 @@ static void viewsAnimTwinGravityWell(MilestoneCtx &ctx) {
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 40, 15);
+  milestoneFrameShow(ctx, 40, 0);
   milestoneClear(ctx);
-  milestoneFrameShow(ctx, 30, 5);
+  milestoneFrameShow(ctx, 30, 0);
 }
 
 static void viewsAnimOmniscience(MilestoneCtx &ctx) {
@@ -397,7 +397,7 @@ static void viewsAnimOmniscience(MilestoneCtx &ctx) {
         }
       }
     }
-    milestoneFrameShow(ctx, 28, min(15, 7 + wave / 2));
+    milestoneFrameShow(ctx, 28, min(8, wave / 2));
   }
   milestoneClear(ctx);
   for (int c = 2; c < ctx.width - 1; c += 3) {
@@ -405,7 +405,7 @@ static void viewsAnimOmniscience(MilestoneCtx &ctx) {
       viewsDrawMiniEye(ctx, c, row, true);
     }
   }
-  milestoneFrameShow(ctx, 180, 14);
+  milestoneFrameShow(ctx, 180, 0);
 }
 
 static void viewsDrawColossalEyes(MilestoneCtx &ctx, int eyeScale, int pupilSize) {
@@ -428,12 +428,12 @@ static void viewsAnimEyeSingularity(MilestoneCtx &ctx) {
       }
     }
     int scale = 3 + (14 - step) / 2;
-    viewsDrawColossalEyes(ctx, min(6, scale), min(4, scale - 1));
-    milestoneFrameShow(ctx, 34, min(15, 8 + (14 - step) / 2));
+    viewsDrawColossalEyes(ctx, min(6, (int)scale), min(4, scale - 1));
+    milestoneFrameShow(ctx, 34, min(7, (14 - step) / 2));
   }
   milestoneClear(ctx);
   viewsDrawColossalEyes(ctx, 6, 4);
-  milestoneFrameShow(ctx, 220, 15);
+  milestoneFrameShow(ctx, 220, 0);
 }
 
 static void viewsAnimCornerSupernova(MilestoneCtx &ctx) {
@@ -453,7 +453,7 @@ static void viewsAnimCornerSupernova(MilestoneCtx &ctx) {
         milestoneDrawFireworkBurst(ctx, sites[s][0], sites[s][1], r, 8, 0.38f);
       }
     }
-    milestoneFrameShow(ctx, r < 8 ? 24 : 32, min(15, 7 + r / 2));
+    milestoneFrameShow(ctx, r < 8 ? 24 : 32, min(8, r / 2));
   }
 }
 
@@ -486,7 +486,7 @@ static void viewsAnimMeteorShower(MilestoneCtx &ctx, int frames) {
         viewsDrawShrapnel(ctx, meteorCol[i], ctx.height - 1, 4);
       }
     }
-    milestoneFrameShow(ctx, 26, min(15, 9 + frame / 4));
+    milestoneFrameShow(ctx, 26, min(6, frame / 4));
   }
 }
 
@@ -501,14 +501,14 @@ static void viewsAnimHypernovaDetonation(MilestoneCtx &ctx, int ox, int oy) {
       milestoneDrawExplosionRing(ctx, ox, oy, r - 5);
     }
     milestoneDrawFireworkBurst(ctx, ox, oy, r, 14, 0.42f);
-    viewsDrawShrapnel(ctx, ox, oy, min(12, r));
-    milestoneFrameShow(ctx, r < 6 ? 20 : 28, min(15, 8 + r / 2));
+    viewsDrawShrapnel(ctx, ox, oy, min(12, (int)r));
+    milestoneFrameShow(ctx, r < 6 ? 20 : 28, min(7, r / 2));
   }
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 55, 15);
+  milestoneFrameShow(ctx, 55, 0);
   milestoneClear(ctx);
-  milestoneFrameShow(ctx, 35, 5);
+  milestoneFrameShow(ctx, 35, 0);
 }
 
 static void viewsDrawGiantEyes(MilestoneCtx &ctx, int openThroughDy,
@@ -543,7 +543,7 @@ static void viewsAnimViewDeluge(MilestoneCtx &ctx, int frames) {
         }
       }
     }
-    milestoneFrameShow(ctx, 28, min(15, 8 + frame / 4));
+    milestoneFrameShow(ctx, 28, min(7, frame / 4));
   }
 }
 
@@ -561,7 +561,7 @@ static void viewsAnimRadialPulse(MilestoneCtx &ctx, int rings) {
     if (ring % 3 == 0) {
       viewsDrawGiantEyes(ctx, 2, 0, false, 2, 2);
     }
-    milestoneFrameShow(ctx, 28, min(15, 8 + ring / 2));
+    milestoneFrameShow(ctx, 28, min(7, ring / 2));
   }
 }
 
@@ -579,7 +579,7 @@ static void viewsAnimPlasmaStorm(MilestoneCtx &ctx, int frames) {
                                    0.4f);
       }
     }
-    milestoneFrameShow(ctx, 30, min(15, 8 + frame / 3));
+    milestoneFrameShow(ctx, 30, min(7, frame / 3));
   }
 }
 
@@ -587,32 +587,32 @@ static void viewsAnimPlasmaStorm(MilestoneCtx &ctx, int frames) {
 static void viewsAnimTier10K(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 12);
+  milestoneEffectBegin(ctx, 0);
 
   for (int dy = -2; dy <= 2; dy++) {
     milestoneClear(ctx);
     viewsDrawEyesFrame(ctx, dy, false, 0, false);
-    milestoneFrameShow(ctx, 48, min(15, 8 + (dy + 2) * 2));
+    milestoneFrameShow(ctx, 48, min(7, (dy + 2) * 2));
   }
 
   milestoneClear(ctx);
   viewsDrawEyesFrame(ctx, 2, true, 0, false);
-  milestoneFrameShow(ctx, 180, 14);
+  milestoneFrameShow(ctx, 180, 0);
 
   const int glanceOffsets[] = {-2, 0, 2, 0};
   for (int i = 0; i < 4; i++) {
     milestoneClear(ctx);
     viewsDrawEyesFrame(ctx, 2, true, glanceOffsets[i], false);
-    milestoneFrameShow(ctx, 62, 13);
+    milestoneFrameShow(ctx, 62, 0);
   }
 
   milestoneClear(ctx);
   viewsDrawEyesFrame(ctx, 2, true, 0, true);
-  milestoneFrameShow(ctx, 95, 10);
+  milestoneFrameShow(ctx, 95, 0);
 
   milestoneClear(ctx);
   viewsDrawEyesFrame(ctx, 2, true, 0, false);
-  milestoneFrameShow(ctx, 130, 14);
+  milestoneFrameShow(ctx, 130, 0);
 
   for (int frame = 0; frame < 10; frame++) {
     milestoneClear(ctx);
@@ -620,7 +620,7 @@ static void viewsAnimTier10K(MD_Parola &display) {
                                0.45f);
     milestoneDrawFireworkBurst(ctx, ctx.cx + VIEWS_EYE_SPACING, ctx.cy, frame, 8,
                                0.45f);
-    milestoneFrameShow(ctx, 38, min(15, 9 + frame / 2));
+    milestoneFrameShow(ctx, 38, min(6, frame / 2));
   }
 
   for (int band = 0; band < 4; band++) {
@@ -634,12 +634,12 @@ static void viewsAnimTier10K(MD_Parola &display) {
         ctx.matrix->setPoint(row, ctx.colStart + c, edge || band == 0);
       }
     }
-    milestoneFrameShow(ctx, 52, min(15, 9 + band * 2));
+    milestoneFrameShow(ctx, 52, min(6, band * 2));
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 90, 15);
+  milestoneFrameShow(ctx, 90, 0);
   milestoneEffectEnd(ctx);
 }
 
@@ -647,44 +647,44 @@ static void viewsAnimTier10K(MD_Parola &display) {
 static void viewsAnimTier100K(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 12);
+  milestoneEffectBegin(ctx, 0);
 
   for (int dy = -2; dy <= 2; dy++) {
     milestoneClear(ctx);
     viewsDrawEyesFrame(ctx, dy, false, 0, false);
-    milestoneFrameShow(ctx, 44, min(15, 8 + (dy + 2) * 2));
+    milestoneFrameShow(ctx, 44, min(7, (dy + 2) * 2));
   }
 
   milestoneClear(ctx);
   viewsDrawEyes(ctx, 2, true, 0, false, 0, 1);
-  milestoneFrameShow(ctx, 160, 14);
+  milestoneFrameShow(ctx, 160, 0);
 
   for (int pupilSize = 1; pupilSize <= 2; pupilSize++) {
     milestoneClear(ctx);
     viewsDrawEyes(ctx, 2, true, 0, false, 0, pupilSize);
-    milestoneFrameShow(ctx, 70, 13);
+    milestoneFrameShow(ctx, 70, 0);
   }
 
   for (int pulse = 0; pulse < 3; pulse++) {
     milestoneClear(ctx);
     viewsDrawEyes(ctx, 2, true, 0, false, pulse % 2, 2);
-    milestoneFrameShow(ctx, 58, pulse % 2 == 0 ? 14 : 11);
+    milestoneFrameShow(ctx, 58, pulse % 2 == 0 ? 3 : 0);
   }
 
   const int lookOffsets[] = {-3, -2, -1, 0, 1, 2, 3, 2, 1, 0};
   for (int i = 0; i < 10; i++) {
     milestoneClear(ctx);
     viewsDrawEyes(ctx, 2, true, lookOffsets[i], false, 0, 2);
-    milestoneFrameShow(ctx, 55, 13);
+    milestoneFrameShow(ctx, 55, 0);
   }
 
   for (int blink = 0; blink < 2; blink++) {
     milestoneClear(ctx);
     viewsDrawEyes(ctx, 2, true, 0, true, 0, 2);
-    milestoneFrameShow(ctx, 85, 10);
+    milestoneFrameShow(ctx, 85, 0);
     milestoneClear(ctx);
     viewsDrawEyes(ctx, 2, true, 0, false, 0, 2);
-    milestoneFrameShow(ctx, 110, 14);
+    milestoneFrameShow(ctx, 110, 0);
   }
 
   uint8_t dropHead[32];
@@ -708,7 +708,7 @@ static void viewsAnimTier100K(MD_Parola &display) {
         }
       }
     }
-    milestoneFrameShow(ctx, 36, min(15, 7 + frame / 3));
+    milestoneFrameShow(ctx, 36, min(8, frame / 3));
   }
 
   for (int frame = 0; frame < 14; frame++) {
@@ -717,7 +717,7 @@ static void viewsAnimTier100K(MD_Parola &display) {
                                0.58f);
     milestoneDrawFireworkBurst(ctx, ctx.cx + VIEWS_EYE_SPACING, ctx.cy, frame, 10,
                                0.58f);
-    milestoneFrameShow(ctx, 40, min(15, 9 + frame / 2));
+    milestoneFrameShow(ctx, 40, min(6, frame / 2));
   }
 
   for (int band = 0; band < 5; band++) {
@@ -731,12 +731,12 @@ static void viewsAnimTier100K(MD_Parola &display) {
         ctx.matrix->setPoint(row, ctx.colStart + c, edge || band == 0);
       }
     }
-    milestoneFrameShow(ctx, 48, min(15, 9 + band * 2));
+    milestoneFrameShow(ctx, 48, min(6, band * 2));
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 85, 15);
+  milestoneFrameShow(ctx, 85, 0);
   milestoneEffectEnd(ctx);
 }
 
@@ -744,7 +744,7 @@ static void viewsAnimTier100K(MD_Parola &display) {
 static void viewsAnimTier1M(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 13);
+  milestoneEffectBegin(ctx, 0);
 
   milestoneAnimSlowRingBuild(ctx, 12, 50);
   delay(90);
@@ -752,20 +752,20 @@ static void viewsAnimTier1M(MD_Parola &display) {
   for (int reveal = 0; reveal < 15; reveal++) {
     milestoneClear(ctx);
     viewsDrawCrowdEyes(ctx, reveal, false);
-    milestoneFrameShow(ctx, 38, min(15, 6 + reveal / 2));
+    milestoneFrameShow(ctx, 38, min(9, reveal / 2));
   }
 
   milestoneClear(ctx);
   viewsDrawCrowdEyes(ctx, 14, false);
-  milestoneFrameShow(ctx, 220, 14);
+  milestoneFrameShow(ctx, 220, 0);
 
   for (int blink = 0; blink < 2; blink++) {
     milestoneClear(ctx);
     viewsDrawCrowdEyes(ctx, 14, true);
-    milestoneFrameShow(ctx, 75, 10);
+    milestoneFrameShow(ctx, 75, 0);
     milestoneClear(ctx);
     viewsDrawCrowdEyes(ctx, 14, false);
-    milestoneFrameShow(ctx, 95, 13);
+    milestoneFrameShow(ctx, 95, 0);
   }
 
   for (int fade = 14; fade >= 0; fade--) {
@@ -774,38 +774,38 @@ static void viewsAnimTier1M(MD_Parola &display) {
     if (fade <= 4) {
       viewsDrawGiantEyes(ctx, min(2, 4 - fade), 0, false, 4 - fade, 1);
     }
-    milestoneFrameShow(ctx, 42, min(15, 8 + (14 - fade) / 2));
+    milestoneFrameShow(ctx, 42, min(7, (14 - fade) / 2));
   }
 
   for (int scale = 1; scale <= 3; scale++) {
     milestoneClear(ctx);
     viewsDrawGiantEyes(ctx, 2, 0, false, scale, min(3, scale + 1));
-    milestoneFrameShow(ctx, 72, min(15, 10 + scale));
+    milestoneFrameShow(ctx, 72, min(5, (int)scale));
   }
 
   milestoneClear(ctx);
   viewsDrawGiantEyes(ctx, 2, 0, false, 3, 3);
-  milestoneFrameShow(ctx, 280, 15);
+  milestoneFrameShow(ctx, 280, 0);
 
   for (int pulse = 0; pulse < 3; pulse++) {
     milestoneClear(ctx);
     viewsDrawGiantEyes(ctx, 2, 0, false, 3, 3);
-    milestoneFrameShow(ctx, pulse == 2 ? 120 : 90, 14);
+    milestoneFrameShow(ctx, pulse == 2 ? 120 : 90, 0);
     milestoneClear(ctx);
     viewsDrawGiantEyes(ctx, 2, 0, true, 3, 3);
-    milestoneFrameShow(ctx, 70, 10);
+    milestoneFrameShow(ctx, 70, 0);
   }
 
   milestoneClear(ctx);
   viewsDrawGiantEyes(ctx, 2, 0, false, 3, 3);
-  milestoneFrameShow(ctx, 160, 15);
+  milestoneFrameShow(ctx, 160, 0);
 
   for (int pulse = 0; pulse < 4; pulse++) {
     milestoneClear(ctx);
     viewsDrawGiantEyes(ctx, 2, 0, false, 3 - pulse % 2, 3);
     milestoneDrawExplosionRing(ctx, ctx.cx - 2, ctx.cy, pulse + 2);
     milestoneDrawExplosionRing(ctx, ctx.cx + 2, ctx.cy, pulse + 2);
-    milestoneFrameShow(ctx, 55, pulse % 2 == 0 ? 15 : 11);
+    milestoneFrameShow(ctx, 55, pulse % 2 == 0 ? 4 : 0);
   }
 
   viewsAnimViewDeluge(ctx, 20);
@@ -819,7 +819,7 @@ static void viewsAnimTier1M(MD_Parola &display) {
       milestoneDrawExplosionRing(ctx, ctx.cx - 2, ctx.cy, ring - 3);
       milestoneDrawExplosionRing(ctx, ctx.cx + 2, ctx.cy, ring - 3);
     }
-    milestoneFrameShow(ctx, ring < 5 ? 26 : 38, min(15, 7 + ring));
+    milestoneFrameShow(ctx, ring < 5 ? 26 : 38, min(8, (int)ring));
   }
 
   const int barrageX[8] = {2, ctx.width / 5, 2 * ctx.width / 5, ctx.width / 2,
@@ -839,12 +839,12 @@ static void viewsAnimTier1M(MD_Parola &display) {
     viewsDrawGiantEyes(ctx, 2, 0, false, 2, 2);
     milestoneDrawFireworkBurst(ctx, ctx.cx - 2, ctx.cy, frame, 12, 0.68f);
     milestoneDrawFireworkBurst(ctx, ctx.cx + 2, ctx.cy, frame, 12, 0.68f);
-    milestoneFrameShow(ctx, 36, min(15, 10 + frame / 3));
+    milestoneFrameShow(ctx, 36, min(5, frame / 3));
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 120, 15);
+  milestoneFrameShow(ctx, 120, 0);
 
   milestoneAnimEmberFallout(ctx, 24, 26);
   milestoneAnimVictoryPulses(ctx, 5, 100, 60);
@@ -857,7 +857,7 @@ static void viewsAnimTier1M(MD_Parola &display) {
 static void viewsAnimTier10M(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 14);
+  milestoneEffectBegin(ctx, 0);
 
   viewsAnimGravityWell(ctx);
   viewsAnimEyeShockwave(ctx);
@@ -871,21 +871,21 @@ static void viewsAnimTier10M(MD_Parola &display) {
       viewsDrawCrowdEyes(ctx, 14, false);
     }
     viewsDrawReticle(ctx, ctx.cx, ctx.cy, 4);
-    milestoneFrameShow(ctx, flash < 4 ? 45 : 70, flash % 2 == 0 ? 13 : 15);
+    milestoneFrameShow(ctx, flash < 4 ? 45 : 70, flash % 2 == 0 ? 0 : 2);
   }
 
   milestoneClear(ctx);
   viewsDrawGiantEyes(ctx, 2, 0, false, 3, 3);
   viewsDrawReticle(ctx, ctx.cx - 2, ctx.cy, 3);
   viewsDrawReticle(ctx, ctx.cx + 2, ctx.cy, 3);
-  milestoneFrameShow(ctx, 200, 15);
+  milestoneFrameShow(ctx, 200, 0);
 
   viewsAnimNovaDetonation(ctx, ctx.cx - 2, ctx.cy, 9);
   viewsAnimNovaDetonation(ctx, ctx.cx + 2, ctx.cy, 9);
 
   milestoneClear(ctx);
   viewsDrawGiantEyes(ctx, 2, 0, false, 3, 3);
-  milestoneFrameShow(ctx, 80, 14);
+  milestoneFrameShow(ctx, 80, 0);
 
   viewsAnimShrapnelBurst(ctx, ctx.cx, ctx.cy);
   delay(50);
@@ -914,7 +914,7 @@ static void viewsAnimTier10M(MD_Parola &display) {
         milestoneDrawExplosionRing(ctx, blastSites[site], ctx.cy, ring - 3);
         viewsDrawNova(ctx, blastSites[site], ctx.cy, ring - 5);
       }
-      milestoneFrameShow(ctx, ring < 5 ? 22 : 30, min(15, 7 + ring));
+      milestoneFrameShow(ctx, ring < 5 ? 22 : 30, min(8, (int)ring));
     }
     delay(35);
   }
@@ -927,12 +927,12 @@ static void viewsAnimTier10M(MD_Parola &display) {
     milestoneDrawFireworkBurst(ctx, ctx.cx - 2, ctx.cy, frame, 14, 0.75f);
     milestoneDrawFireworkBurst(ctx, ctx.cx + 2, ctx.cy, frame, 14, 0.75f);
     viewsDrawShrapnel(ctx, ctx.cx, ctx.cy, min(10, frame / 2 + 2));
-    milestoneFrameShow(ctx, 34, min(15, 10 + frame / 3));
+    milestoneFrameShow(ctx, 34, min(5, frame / 3));
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 140, 15);
+  milestoneFrameShow(ctx, 140, 0);
 
   milestoneAnimShockwaveFlashes(ctx, 7, 50, 38);
   milestoneAnimEmberFallout(ctx, 26, 26);
@@ -946,7 +946,7 @@ static void viewsAnimTier10M(MD_Parola &display) {
 static void viewsAnimTier100M(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 15);
+  milestoneEffectBegin(ctx, 0);
 
   viewsAnimTwinGravityWell(ctx);
   viewsAnimEyeShockwave(ctx);
@@ -958,7 +958,7 @@ static void viewsAnimTier100M(MD_Parola &display) {
   for (int blink = 0; blink < 2; blink++) {
     milestoneClear(ctx);
     viewsDrawColossalEyes(ctx, 6, 4);
-    milestoneFrameShow(ctx, 100, 15);
+    milestoneFrameShow(ctx, 100, 0);
     milestoneClear(ctx);
     viewsDrawColossalEyes(ctx, 6, 4);
     for (int col = ctx.cx - 10; col <= ctx.cx + 10; col++) {
@@ -966,12 +966,12 @@ static void viewsAnimTier100M(MD_Parola &display) {
         ctx.matrix->setPoint(ctx.cy, ctx.colStart + col, true);
       }
     }
-    milestoneFrameShow(ctx, 65, 10);
+    milestoneFrameShow(ctx, 65, 0);
   }
 
   milestoneClear(ctx);
   viewsDrawColossalEyes(ctx, 6, 4);
-  milestoneFrameShow(ctx, 160, 15);
+  milestoneFrameShow(ctx, 160, 0);
 
   viewsAnimCornerSupernova(ctx);
   delay(50);
@@ -984,7 +984,7 @@ static void viewsAnimTier100M(MD_Parola &display) {
 
   milestoneClear(ctx);
   viewsDrawColossalEyes(ctx, 5, 4);
-  milestoneFrameShow(ctx, 90, 14);
+  milestoneFrameShow(ctx, 90, 0);
 
   viewsAnimGridDetonation(ctx);
   viewsAnimViewDeluge(ctx, 22);
@@ -1012,7 +1012,7 @@ static void viewsAnimTier100M(MD_Parola &display) {
         viewsDrawNova(ctx, blastSites[s], ctx.cy, ring - 5);
       }
     }
-    milestoneFrameShow(ctx, ring < 6 ? 20 : 28, min(15, 7 + ring / 2));
+    milestoneFrameShow(ctx, ring < 6 ? 20 : 28, min(8, ring / 2));
   }
 
   milestoneAnimMegablast(ctx, 14, 24, 36, true);
@@ -1024,12 +1024,12 @@ static void viewsAnimTier100M(MD_Parola &display) {
     milestoneDrawFireworkBurst(ctx, ctx.cx - 1, ctx.cy, frame, 16, 0.8f);
     milestoneDrawFireworkBurst(ctx, ctx.cx + 1, ctx.cy, frame, 16, 0.8f);
     viewsDrawShrapnel(ctx, ctx.cx, ctx.cy, min(12, frame / 2 + 3));
-    milestoneFrameShow(ctx, 32, min(15, 10 + frame / 3));
+    milestoneFrameShow(ctx, 32, min(5, frame / 3));
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 160, 15);
+  milestoneFrameShow(ctx, 160, 0);
 
   milestoneAnimShockwaveFlashes(ctx, 8, 48, 36);
   milestoneAnimEmberFallout(ctx, 28, 24);

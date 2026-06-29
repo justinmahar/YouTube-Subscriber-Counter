@@ -108,32 +108,32 @@ static void drawCaffeineBurst(MilestoneCtx &ctx, int cx, int cy,
 void runCoffeeDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawBeanRain(ctx, frame);
-    milestoneFrameShow(ctx, 55, 7 + frame % 5);
+    milestoneFrameShow(ctx, 55, frame % 5);
   }
 
   for (uint8_t frame = 0; frame < 20; frame++) {
     milestoneClear(ctx);
     drawMug(ctx, ctx.cx - 10, 0, frame);
-    milestoneFrameShow(ctx, 85, frame % 2 == 0 ? 14 : 8);
+    milestoneFrameShow(ctx, 85, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawMug(ctx, ctx.cx - 10, 0, frame);
     drawBean(ctx, ctx.cx - 17 + frame * 2, 5 - frame % 3, frame);
-    milestoneFrameShow(ctx, 65, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 65, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawMug(ctx, ctx.cx - 10, 0, frame, false);
     drawCaffeineBurst(ctx, ctx.cx, 3, frame);
-    milestoneFrameShow(ctx, 45, frame % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 45, frame % 2 == 0 ? 5 : 0);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -145,7 +145,7 @@ void runCoffeeDayHolidayAnimation(MD_Parola &display) {
       drawCaffeineBurst(ctx, ctx.cx, 3, flash + 6);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 110 : 90,
-                       flash % 2 == 0 ? 12 : 15);
+                       flash % 2 == 0 ? 0 : 3);
   }
 
   milestoneEffectEnd(ctx);

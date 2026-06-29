@@ -155,25 +155,25 @@ static void drawSparkBurst(MilestoneCtx &ctx, int originX, int originY,
 void runBirthdayHolidayAnimation(MD_Parola &display, const char *message) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 14; frame++) {
     milestoneClear(ctx);
     drawHbd(ctx, frame);
-    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t reveal = 1; reveal <= 8; reveal++) {
     milestoneClear(ctx);
     drawCake(ctx, ctx.cx, reveal, reveal);
-    milestoneFrameShow(ctx, 120, 7 + reveal);
+    milestoneFrameShow(ctx, 120, reveal);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
     milestoneClear(ctx);
     drawCake(ctx, ctx.cx, 8, frame);
     drawBalloons(ctx, frame);
-    milestoneFrameShow(ctx, 65, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 65, frame % 2 == 0 ? 6 : 0);
   }
 
   const int burstX[4] = {ctx.width / 5, 2 * ctx.width / 5, 3 * ctx.width / 5,
@@ -188,8 +188,8 @@ void runBirthdayHolidayAnimation(MD_Parola &display, const char *message) {
         drawSparkBurst(ctx, burstX[burst], burstY[burst], localFrame);
       }
     }
-    uint8_t intensity = 8 + frame / 2;
-    milestoneFrameShow(ctx, 45, intensity > 15 ? 15 : intensity);
+    uint8_t intensity = frame / 2;
+    milestoneFrameShow(ctx, 45, intensity > 7 ? 7 : intensity);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -200,7 +200,7 @@ void runBirthdayHolidayAnimation(MD_Parola &display, const char *message) {
       drawCake(ctx, ctx.cx, 8, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 55 : 95,
-                       flash % 2 == 0 ? 15 : 8);
+                       flash % 2 == 0 ? 7 : 0);
   }
 
   milestoneEffectEnd(ctx);

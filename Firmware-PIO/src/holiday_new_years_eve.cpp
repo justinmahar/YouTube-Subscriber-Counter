@@ -93,7 +93,7 @@ static void drawConfetti(MilestoneCtx &ctx, uint8_t frame) {
 void runNewYearsEveHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 0);
 
   for (int digit = 3; digit >= 1; digit--) {
     for (int blink = 0; blink < 2; blink++) {
@@ -103,7 +103,7 @@ void runNewYearsEveHolidayAnimation(MD_Parola &display) {
         drawSparkle(ctx, ctx.cx - 8, 1 + digit, true);
         drawSparkle(ctx, ctx.cx + 8, 6 - digit, false);
       }
-      milestoneFrameShow(ctx, blink == 0 ? 230 : 90, blink == 0 ? 14 : 5);
+      milestoneFrameShow(ctx, blink == 0 ? 230 : 90, blink == 0 ? 9 : 0);
     }
   }
 
@@ -114,7 +114,7 @@ void runNewYearsEveHolidayAnimation(MD_Parola &display) {
     if (frame % 3 == 0) {
       drawSparkle(ctx, ctx.cx - 10 + frame, 1 + frame % 5, frame % 2 == 0);
     }
-    milestoneFrameShow(ctx, 62, 8 + frame / 2);
+    milestoneFrameShow(ctx, 62, frame / 2);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -125,7 +125,7 @@ void runNewYearsEveHolidayAnimation(MD_Parola &display) {
       drawBallDrop(ctx, 6, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 60 : 95,
-                       flash % 2 == 0 ? 15 : 9);
+                       flash % 2 == 0 ? 6 : 0);
   }
 
   const int burstX[5] = {ctx.width / 6, ctx.width / 3, ctx.width / 2,
@@ -140,7 +140,7 @@ void runNewYearsEveHolidayAnimation(MD_Parola &display) {
                                    localFrame, 10, 0.62f);
       }
     }
-    milestoneFrameShow(ctx, 42, min(15, 9 + frame / 2));
+    milestoneFrameShow(ctx, 42, min(6, frame / 2));
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
@@ -149,7 +149,7 @@ void runNewYearsEveHolidayAnimation(MD_Parola &display) {
     if (frame % 2 == 0) {
       drawSparkle(ctx, ctx.cx, 3, true);
     }
-    milestoneFrameShow(ctx, 48, frame % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 48, frame % 2 == 0 ? 5 : 0);
   }
 
   milestoneEffectEnd(ctx);

@@ -83,19 +83,19 @@ static void drawHonorBurst(MilestoneCtx &ctx, int originX, int originY,
 void runVeteransDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 20; frame++) {
     milestoneClear(ctx);
     drawFlagWave(ctx, frame);
-    milestoneFrameShow(ctx, 60, 7 + frame % 5);
+    milestoneFrameShow(ctx, 60, frame % 5);
   }
 
   for (uint8_t frame = 0; frame < 12; frame++) {
     milestoneClear(ctx);
     drawFlagWave(ctx, frame / 2);
     drawSalute(ctx, ctx.cx, frame);
-    milestoneFrameShow(ctx, 105, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 105, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
@@ -105,7 +105,7 @@ void runVeteransDayHolidayAnimation(MD_Parola &display) {
     if (frame % 4 == 0) {
       drawStar(ctx, ctx.cx - 12 + frame, 1 + frame % 5, true);
     }
-    milestoneFrameShow(ctx, 55, frame % 2 == 0 ? 14 : 8);
+    milestoneFrameShow(ctx, 55, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
@@ -114,8 +114,8 @@ void runVeteransDayHolidayAnimation(MD_Parola &display) {
     if (frame < 10) {
       drawSalute(ctx, ctx.cx, frame);
     }
-    uint8_t intensity = 8 + frame / 2;
-    milestoneFrameShow(ctx, 45, intensity > 15 ? 15 : intensity);
+    uint8_t intensity = frame / 2;
+    milestoneFrameShow(ctx, 45, intensity > 7 ? 7 : intensity);
   }
 
   for (int flash = 0; flash < 3; flash++) {
@@ -127,7 +127,7 @@ void runVeteransDayHolidayAnimation(MD_Parola &display) {
       drawStar(ctx, ctx.cx, 3, true);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 110 : 140,
-                       flash % 2 == 0 ? 9 : 15);
+                       flash % 2 == 0 ? 0 : 6);
   }
 
   milestoneEffectEnd(ctx);

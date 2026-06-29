@@ -63,12 +63,12 @@ static void drawFireworkBurst(MilestoneCtx &ctx, int originX, int originY,
 void runJulyFourthHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawFlagWave(ctx, frame);
-    milestoneFrameShow(ctx, 55, 8 + frame % 5);
+    milestoneFrameShow(ctx, 55, frame % 5);
   }
 
   for (int frame = 0; frame < 16; frame++) {
@@ -79,7 +79,7 @@ void runJulyFourthHolidayAnimation(MD_Parola &display) {
       drawFireworkBurst(ctx, ctx.width / 4, 2, frame - 9, 8, 0.75f);
       drawFireworkBurst(ctx, 3 * ctx.width / 4, 3, frame - 9, 8, 0.75f);
     }
-    milestoneFrameShow(ctx, 48, 10 + frame % 5);
+    milestoneFrameShow(ctx, 48, frame % 5);
   }
 
   const int burstX[5] = {ctx.width / 6, ctx.width / 3, ctx.width / 2,
@@ -94,8 +94,8 @@ void runJulyFourthHolidayAnimation(MD_Parola &display) {
                           0.62f);
       }
     }
-    uint8_t intensity = 8 + frame / 2;
-    milestoneFrameShow(ctx, 42, intensity > 15 ? 15 : intensity);
+    uint8_t intensity = frame / 2;
+    milestoneFrameShow(ctx, 42, intensity > 7 ? 7 : intensity);
   }
 
   for (int flash = 0; flash < 5; flash++) {
@@ -106,7 +106,7 @@ void runJulyFourthHolidayAnimation(MD_Parola &display) {
       drawFlagWave(ctx, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 70 : 95,
-                       flash % 2 == 0 ? 15 : 8);
+                       flash % 2 == 0 ? 7 : 0);
   }
 
   milestoneEffectEnd(ctx);

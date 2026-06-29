@@ -3,6 +3,24 @@
 #include <math.h>
 #include <stdlib.h>
 
+static bool animationBrightnessBoostEnabled = false;
+static uint8_t animationBrightnessBoostAmount = 0;
+
+void animationBrightnessConfigure(bool boostEnabled, uint8_t boostAmount) {
+  animationBrightnessBoostEnabled = boostEnabled;
+  animationBrightnessBoostAmount = min((uint8_t)15, boostAmount);
+}
+
+uint8_t animationDisplayIntensity(uint8_t normalizedIntensity) {
+  if (!animationBrightnessBoostEnabled || animationBrightnessBoostAmount == 0) {
+    return 0;
+  }
+
+  uint8_t clampedNormalized = min((uint8_t)15, normalizedIntensity);
+  uint8_t boosted = clampedNormalized + animationBrightnessBoostAmount;
+  return boosted > 15 ? 15 : boosted;
+}
+
 void milestoneCtxInit(MD_Parola &display, MilestoneCtx &ctx) {
   ctx.display = &display;
   ctx.matrix = display.getGraphicObject();
@@ -15,7 +33,7 @@ void milestoneCtxInit(MD_Parola &display, MilestoneCtx &ctx) {
 
 void milestoneEffectBegin(MilestoneCtx &ctx, uint8_t intensity) {
   ctx.matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
-  ctx.display->setIntensity(intensity);
+  ctx.display->setIntensity(animationDisplayIntensity(intensity));
 }
 
 void milestoneEffectEnd(MilestoneCtx &ctx) {
@@ -25,7 +43,7 @@ void milestoneEffectEnd(MilestoneCtx &ctx) {
 }
 
 void milestoneFrameShow(MilestoneCtx &ctx, uint16_t delayMs, uint8_t intensity) {
-  ctx.display->setIntensity(intensity);
+  ctx.display->setIntensity(animationDisplayIntensity(intensity));
   ctx.matrix->update();
   delay(delayMs);
 }
@@ -102,9 +120,9 @@ void milestoneAnimVictoryPulses(MilestoneCtx &ctx, int pulseCount,
   for (int pulse = 0; pulse < pulseCount; pulse++) {
     milestoneClear(ctx);
     milestoneFillAll(ctx);
-    milestoneFrameShow(ctx, onMs, 15);
+    milestoneFrameShow(ctx, onMs, 0);
     milestoneClear(ctx);
-    milestoneFrameShow(ctx, offMs, 5);
+    milestoneFrameShow(ctx, offMs, 0);
   }
 }
 
@@ -130,7 +148,7 @@ void milestoneAnimSparkRain(MilestoneCtx &ctx, int frames,
         }
       }
     }
-    milestoneFrameShow(ctx, frameDelayMs, min(15, 6 + frame / 2));
+    milestoneFrameShow(ctx, frameDelayMs, min(9, frame / 2));
   }
 }
 
@@ -194,7 +212,7 @@ void milestoneAnimFallingComets(MilestoneCtx &ctx, int passes, uint16_t frameDel
           }
         }
       }
-      milestoneFrameShow(ctx, frameDelayMs, min(15, 8 + pass * 2 + frame / 8));
+      milestoneFrameShow(ctx, frameDelayMs, min(7, pass * 2 + frame / 8));
     }
 
     if (pass + 1 < passes) {
@@ -202,7 +220,7 @@ void milestoneAnimFallingComets(MilestoneCtx &ctx, int passes, uint16_t frameDel
       for (int spark = 0; spark < 14; spark++) {
         ctx.matrix->setPoint(random(ctx.height), ctx.colStart + random(ctx.width), true);
       }
-      milestoneFrameShow(ctx, 38, 12);
+      milestoneFrameShow(ctx, 38, 0);
     }
   }
 }
@@ -223,7 +241,7 @@ void milestoneAnimRockets(MilestoneCtx &ctx, int frames, uint16_t frameDelayMs) 
         }
       }
     }
-    milestoneFrameShow(ctx, frameDelayMs, min(15, 5 + frame / 3));
+    milestoneFrameShow(ctx, frameDelayMs, min(10, frame / 3));
   }
 }
 
@@ -236,15 +254,15 @@ void milestoneAnimMegablast(MilestoneCtx &ctx, int maxRing, uint16_t fastDelayMs
       milestoneDrawExplosionRing(ctx, ctx.cx, ctx.cy, ring - 2);
     }
     milestoneFrameShow(ctx, ring < maxRing / 2 ? fastDelayMs : slowDelayMs,
-                       min(15, 6 + ring));
+                       min(9, (int)ring));
   }
 
   if (flashAfter) {
     milestoneClear(ctx);
     milestoneFillAll(ctx);
-    milestoneFrameShow(ctx, 90, 15);
+    milestoneFrameShow(ctx, 90, 0);
     milestoneClear(ctx);
-    milestoneFrameShow(ctx, 50, 5);
+    milestoneFrameShow(ctx, 50, 0);
   }
 }
 
@@ -263,7 +281,7 @@ void milestoneAnimFireworkBarrage(MilestoneCtx &ctx, const int *originX,
                                  frame - b * staggerFrames, particleCount,
                                  speed);
     }
-    milestoneFrameShow(ctx, frameDelayMs, min(15, 8 + frame / 4));
+    milestoneFrameShow(ctx, frameDelayMs, min(7, frame / 4));
   }
 }
 
@@ -280,7 +298,7 @@ void milestoneAnimChainExplosions(MilestoneCtx &ctx, const int *originX,
           milestoneDrawExplosionRing(ctx, originX[s], ctx.cy, drawRing - 1);
         }
       }
-      milestoneFrameShow(ctx, frameDelayMs, min(15, 9 + ring));
+      milestoneFrameShow(ctx, frameDelayMs, min(6, (int)ring));
     }
     delay(sitePauseMs);
   }
@@ -301,7 +319,7 @@ void milestoneAnimRippleBars(MilestoneCtx &ctx, int frames,
   for (int ring = 0; ring < frames; ring++) {
     milestoneClear(ctx);
     milestoneDrawExpandingRipple(ctx, ring);
-    milestoneFrameShow(ctx, frameDelayMs, min(15, 6 + ring / 3));
+    milestoneFrameShow(ctx, frameDelayMs, min(9, ring / 3));
   }
 }
 
@@ -312,7 +330,7 @@ void milestoneAnimDoubleDiamondPulse(MilestoneCtx &ctx, uint16_t frameDelayMs) {
     for (int ring = startRing; ring <= endRing; ring++) {
       milestoneClear(ctx);
       milestoneDrawDiamondRing(ctx, ring);
-      milestoneFrameShow(ctx, frameDelayMs, min(15, 8 + ring * 2));
+      milestoneFrameShow(ctx, frameDelayMs, min(7, ring * 2));
     }
     if (pass == 0) {
       delay(70);
@@ -326,7 +344,7 @@ void milestoneAnimTripleTsunami(MilestoneCtx &ctx, int framesPerWave,
     for (int ring = 0; ring < framesPerWave; ring++) {
       milestoneClear(ctx);
       milestoneDrawExpandingRipple(ctx, ring);
-      milestoneFrameShow(ctx, frameDelayMs, min(15, 8 + wave * 2 + ring / 4));
+      milestoneFrameShow(ctx, frameDelayMs, min(7, wave * 2 + ring / 4));
     }
     if (wave < 2) {
       delay(wavePauseMs);
@@ -346,7 +364,7 @@ void milestoneAnimCounterClimb(MilestoneCtx &ctx, uint16_t frameDelayMs) {
         ctx.matrix->setPoint(row, ctx.colStart + c, true);
       }
     }
-    milestoneFrameShow(ctx, frameDelayMs, min(15, 6 + frame / 4));
+    milestoneFrameShow(ctx, frameDelayMs, min(9, frame / 4));
   }
 }
 
@@ -360,7 +378,7 @@ void milestoneAnimCounterShimmer(MilestoneCtx &ctx, int frames,
         ctx.matrix->setPoint(row, ctx.colStart + c, true);
       }
     }
-    milestoneFrameShow(ctx, frameDelayMs, 14);
+    milestoneFrameShow(ctx, frameDelayMs, 0);
   }
 }
 
@@ -369,7 +387,7 @@ void milestoneAnimSlowRingBuild(MilestoneCtx &ctx, int maxRing,
   for (int ring = 1; ring <= maxRing; ring++) {
     milestoneClear(ctx);
     milestoneDrawDiamondRing(ctx, ring);
-    milestoneFrameShow(ctx, frameDelayMs, min(15, 4 + ring));
+    milestoneFrameShow(ctx, frameDelayMs, min(11, (int)ring));
   }
 }
 
@@ -382,14 +400,14 @@ void milestoneAnimShockwaveFlashes(MilestoneCtx &ctx, int flashCount,
         ctx.matrix->setPoint(row, ctx.colStart + c, (c + row + wave) % 3 != 0);
       }
     }
-    milestoneFrameShow(ctx, flashMs, 15);
+    milestoneFrameShow(ctx, flashMs, 0);
 
     milestoneClear(ctx);
     for (int i = 0; i < 18; i++) {
       ctx.matrix->setPoint(random(ctx.height), ctx.colStart + random(ctx.width),
                            true);
     }
-    milestoneFrameShow(ctx, emberMs, 10);
+    milestoneFrameShow(ctx, emberMs, 0);
   }
 }
 
@@ -415,7 +433,7 @@ void milestoneAnimEmberFallout(MilestoneCtx &ctx, int frames,
         emberCol[i] = random(ctx.width);
       }
     }
-    milestoneFrameShow(ctx, frameDelayMs, max(4, 14 - frame / 3));
+    milestoneFrameShow(ctx, frameDelayMs, max(0, 10 - frame / 3));
   }
 }
 
@@ -425,9 +443,9 @@ void milestoneAnimFinalFlashes(MilestoneCtx &ctx, int flashCount,
   for (int flash = 0; flash < flashCount; flash++) {
     milestoneClear(ctx);
     milestoneFillAll(ctx);
-    milestoneFrameShow(ctx, flash == flashCount - 1 ? lastFlashMs : flashMs, 15);
+    milestoneFrameShow(ctx, flash == flashCount - 1 ? lastFlashMs : flashMs, 0);
     milestoneClear(ctx);
-    milestoneFrameShow(ctx, gapMs, 5);
+    milestoneFrameShow(ctx, gapMs, 0);
   }
 }
 
@@ -444,15 +462,15 @@ void milestoneAnimMultiSiteBlast(MilestoneCtx &ctx, const int *originX,
       }
     }
     milestoneFrameShow(ctx, ring < maxRing / 2 ? fastDelayMs : slowDelayMs,
-                       min(15, 6 + ring));
+                       min(9, (int)ring));
   }
 
   if (flashAfter) {
     milestoneClear(ctx);
     milestoneFillAll(ctx);
-    milestoneFrameShow(ctx, 110, 15);
+    milestoneFrameShow(ctx, 110, 0);
     milestoneClear(ctx);
-    milestoneFrameShow(ctx, 55, 5);
+    milestoneFrameShow(ctx, 55, 0);
   }
 }
 
@@ -469,7 +487,7 @@ void milestoneAnimDualEdgeClimb(MilestoneCtx &ctx, uint16_t frameDelayMs) {
         ctx.matrix->setPoint(row, ctx.colStart + c, true);
       }
     }
-    milestoneFrameShow(ctx, frameDelayMs, min(15, 5 + frame / 4));
+    milestoneFrameShow(ctx, frameDelayMs, min(10, frame / 4));
   }
 }
 
@@ -488,6 +506,6 @@ void milestoneAnimScreenShake(MilestoneCtx &ctx, int frames,
         }
       }
     }
-    milestoneFrameShow(ctx, frameDelayMs, 14);
+    milestoneFrameShow(ctx, frameDelayMs, 0);
   }
 }

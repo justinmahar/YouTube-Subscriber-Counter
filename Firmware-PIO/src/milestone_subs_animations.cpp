@@ -19,7 +19,7 @@ static void runSubsTier(MD_Parola &display, void (*animation)(MD_Parola &),
 static void subsAnimTier100(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 13);
+  milestoneEffectBegin(ctx, 0);
 
   uint8_t barHeight[32];
   for (int c = 0; c < ctx.width; c++) {
@@ -39,7 +39,7 @@ static void subsAnimTier100(MD_Parola &display) {
         ctx.matrix->setPoint(row, ctx.colStart + c, true);
       }
     }
-    milestoneFrameShow(ctx, 32, 13);
+    milestoneFrameShow(ctx, 32, 0);
   }
 
   delay(60);
@@ -47,12 +47,12 @@ static void subsAnimTier100(MD_Parola &display) {
   for (int ring = 1; ring <= 5; ring++) {
     milestoneClear(ctx);
     milestoneDrawDiamondRing(ctx, ring);
-    milestoneFrameShow(ctx, 45, min(15, 9 + ring * 2));
+    milestoneFrameShow(ctx, 45, min(6, ring * 2));
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 80, 15);
+  milestoneFrameShow(ctx, 80, 0);
   milestoneEffectEnd(ctx);
 }
 
@@ -72,7 +72,7 @@ static void subsAnimTier1K(MD_Parola &display) {
     if (frame < 2) {
       milestoneFillAll(ctx);
     }
-    milestoneFrameShow(ctx, 55, max(2, 15 - frame * 3));
+    milestoneFrameShow(ctx, 55, max(0, 13 - frame * 3));
   }
 
   milestoneEffectEnd(ctx);
@@ -190,7 +190,7 @@ static void subsAnimTier1M(MD_Parola &display) {
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 130, 15);
+  milestoneFrameShow(ctx, 130, 0);
   milestoneAnimScreenShake(ctx, 8, 18);
 
   milestoneAnimEmberFallout(ctx, 32, 28);
@@ -220,16 +220,16 @@ static void subsAnimTier10M(MD_Parola &display) {
       if (ring > 2) {
         milestoneDrawExplosionRing(ctx, blastSites[site], ctx.cy, ring - 2);
       }
-      milestoneFrameShow(ctx, ring < 6 ? 24 : 36, min(15, 6 + ring));
+      milestoneFrameShow(ctx, ring < 6 ? 24 : 36, min(9, (int)ring));
     }
     if (site < 2) {
       delay(60);
     } else {
       milestoneClear(ctx);
       milestoneFillAll(ctx);
-      milestoneFrameShow(ctx, 100, 15);
+      milestoneFrameShow(ctx, 100, 0);
       milestoneClear(ctx);
-      milestoneFrameShow(ctx, 50, 5);
+      milestoneFrameShow(ctx, 50, 0);
     }
   }
 

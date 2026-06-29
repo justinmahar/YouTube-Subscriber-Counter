@@ -133,26 +133,26 @@ static void drawGoldBurst(MilestoneCtx &ctx, int originX, int originY,
 void runPirateDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (int frame = 0; frame < ctx.width + 18; frame += 2) {
     milestoneClear(ctx);
     drawShip(ctx, frame, frame);
-    milestoneFrameShow(ctx, 50, 7 + frame % 5);
+    milestoneFrameShow(ctx, 50, frame % 5);
   }
 
   for (uint8_t reveal = 1; reveal <= 8; reveal++) {
     milestoneClear(ctx);
     drawCrossbones(ctx, ctx.cx, reveal);
     drawSkull(ctx, ctx.cx, reveal, reveal);
-    milestoneFrameShow(ctx, 110, 7 + reveal);
+    milestoneFrameShow(ctx, 110, reveal);
   }
 
   for (uint8_t grin = 0; grin < 10; grin++) {
     milestoneClear(ctx);
     drawCrossbones(ctx, ctx.cx, grin);
     drawSkull(ctx, ctx.cx, 8, grin);
-    milestoneFrameShow(ctx, 90, grin % 2 == 0 ? 15 : 8);
+    milestoneFrameShow(ctx, 90, grin % 2 == 0 ? 7 : 0);
   }
 
   for (uint8_t frame = 0; frame < 14; frame++) {
@@ -162,15 +162,15 @@ void runPirateDayHolidayAnimation(MD_Parola &display) {
       drawGoldSparkle(ctx, ctx.cx - 10 + frame, 1 + frame % 5, true);
       drawGoldSparkle(ctx, ctx.cx + 10 - frame / 2, 2 + frame % 4, false);
     }
-    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawTreasureChest(ctx, ctx.cx, frame);
     drawGoldBurst(ctx, ctx.cx, 3, frame);
-    uint8_t intensity = 8 + frame / 2;
-    milestoneFrameShow(ctx, 45, intensity > 15 ? 15 : intensity);
+    uint8_t intensity = frame / 2;
+    milestoneFrameShow(ctx, 45, intensity > 7 ? 7 : intensity);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -182,7 +182,7 @@ void runPirateDayHolidayAnimation(MD_Parola &display) {
       drawTreasureChest(ctx, ctx.cx, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 55 : 95,
-                       flash % 2 == 0 ? 15 : 8);
+                       flash % 2 == 0 ? 7 : 0);
   }
 
   milestoneEffectEnd(ctx);

@@ -150,27 +150,27 @@ static void drawNumberOneDad(MilestoneCtx &ctx, int left, int top,
 void runFathersDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 30; frame++) {
     milestoneClear(ctx);
     drawHorizontalLine(ctx, 0, ctx.width - 1, 7);
     int motoX = -22 + (frame * (ctx.width + 26)) / 29;
     drawMotorcycle(ctx, motoX, frame);
-    milestoneFrameShow(ctx, 55, 9 + frame % 5);
+    milestoneFrameShow(ctx, 55, frame % 5);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawMug(ctx, ctx.cx - 8, 0, frame);
-    milestoneFrameShow(ctx, 90, frame % 2 == 0 ? 13 : 8);
+    milestoneFrameShow(ctx, 90, frame % 2 == 0 ? 5 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawNumberOneDad(ctx, ctx.cx - 12, 1, frame);
     drawSparkles(ctx, frame);
-    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 5 : 0);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -181,7 +181,7 @@ void runFathersDayHolidayAnimation(MD_Parola &display) {
       drawNumberOneDad(ctx, ctx.cx - 12, 1, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 100 : 120,
-                       flash % 2 == 0 ? 12 : 15);
+                       flash % 2 == 0 ? 0 : 3);
   }
 
   milestoneEffectEnd(ctx);

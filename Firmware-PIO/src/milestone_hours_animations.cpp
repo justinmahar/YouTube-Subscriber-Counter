@@ -142,7 +142,7 @@ static void hoursAnimDualBuild(MilestoneCtx &ctx, int leftOx, int rightOx) {
     milestoneClear(ctx);
     hoursDrawHourglassFrameAt(ctx, leftOx, row);
     hoursDrawHourglassFrameAt(ctx, rightOx, row);
-    milestoneFrameShow(ctx, 40, min(15, 8 + row));
+    milestoneFrameShow(ctx, 40, min(7, (int)row));
   }
 }
 
@@ -150,7 +150,7 @@ static void hoursAnimDualFill(MilestoneCtx &ctx, int leftOx, int rightOx) {
   for (int top = 1; top <= HOURS_SAND_COUNT; top++) {
     milestoneClear(ctx);
     hoursDrawDualHourglasses(ctx, leftOx, rightOx, top, 0);
-    milestoneFrameShow(ctx, top == HOURS_SAND_COUNT ? 100 : 38, min(15, 8 + top));
+    milestoneFrameShow(ctx, top == HOURS_SAND_COUNT ? 100 : 38, min(7, (int)top));
   }
 }
 
@@ -170,41 +170,41 @@ static void hoursAnimDualDrain(MilestoneCtx &ctx, int leftOx, int rightOx) {
                               step > 0 ? fallRows[step - 1] : -1);
       hoursDrawHourglassFrameAt(ctx, leftOx, ctx.height - 1);
       hoursDrawHourglassFrameAt(ctx, rightOx, ctx.height - 1);
-      milestoneFrameShow(ctx, step < 2 ? 36 : 28, min(15, 10 + step));
+      milestoneFrameShow(ctx, step < 2 ? 36 : 28, min(5, (int)step));
     }
     milestoneClear(ctx);
     hoursDrawDualHourglasses(ctx, leftOx, rightOx, HOURS_SAND_COUNT - grain - 1,
                              grain + 1);
-    milestoneFrameShow(ctx, 22, 12);
+    milestoneFrameShow(ctx, 22, 0);
   }
 }
 
 static void hoursAnimDualFinale(MilestoneCtx &ctx, int leftOx, int rightOx) {
   milestoneClear(ctx);
   hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-  milestoneFrameShow(ctx, 120, 14);
+  milestoneFrameShow(ctx, 120, 0);
 
   for (int ring = 1; ring <= 4; ring++) {
     milestoneClear(ctx);
     milestoneDrawExplosionRing(ctx, leftOx, ctx.cy, ring);
     milestoneDrawExplosionRing(ctx, rightOx, ctx.cy, ring);
     hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-    milestoneFrameShow(ctx, 44, min(15, 9 + ring));
+    milestoneFrameShow(ctx, 44, min(6, (int)ring));
   }
 
   for (int pulse = 0; pulse < 3; pulse++) {
     milestoneClear(ctx);
     hoursDrawDualHourglasses(ctx, leftOx, rightOx, 0, HOURS_SAND_COUNT);
-    milestoneFrameShow(ctx, pulse == 2 ? 90 : 60, pulse % 2 == 0 ? 15 : 11);
+    milestoneFrameShow(ctx, pulse == 2 ? 90 : 60, pulse % 2 == 0 ? 4 : 0);
     if (pulse < 2) {
       milestoneClear(ctx);
-      milestoneFrameShow(ctx, 30, 5);
+      milestoneFrameShow(ctx, 30, 0);
     }
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 70, 15);
+  milestoneFrameShow(ctx, 70, 0);
 }
 
 static void hoursDrawTripleHourglasses(MilestoneCtx &ctx, int leftOx, int centerOx,
@@ -268,7 +268,7 @@ static void hoursAnimTripleBuildCascade(MilestoneCtx &ctx, int leftOx, int cente
         hoursDrawHourglassFrameAt(ctx, oxs[done], ctx.height - 1);
       }
       hoursDrawHourglassFrameAt(ctx, oxs[glass], row);
-      milestoneFrameShow(ctx, 32, min(15, 8 + row + glass * 2));
+      milestoneFrameShow(ctx, 32, min(7, row + glass * 2));
     }
     for (int ring = 1; ring <= 4; ring++) {
       milestoneClear(ctx);
@@ -277,16 +277,16 @@ static void hoursAnimTripleBuildCascade(MilestoneCtx &ctx, int leftOx, int cente
       }
       milestoneDrawExplosionRing(ctx, oxs[glass], ctx.cy, ring);
       hoursDrawHourglassFrameAt(ctx, oxs[glass], ctx.height - 1);
-      milestoneFrameShow(ctx, 26, min(15, 9 + ring + glass));
+      milestoneFrameShow(ctx, 26, min(6, ring + glass));
     }
     milestoneClear(ctx);
     milestoneFillAll(ctx);
-    milestoneFrameShow(ctx, glass == 2 ? 55 : 35, 15);
+    milestoneFrameShow(ctx, glass == 2 ? 55 : 35, 0);
     milestoneClear(ctx);
     for (int done = 0; done <= glass; done++) {
       hoursDrawHourglassFrameAt(ctx, oxs[done], ctx.height - 1);
     }
-    milestoneFrameShow(ctx, 40, 14);
+    milestoneFrameShow(ctx, 40, 0);
   }
 }
 
@@ -294,11 +294,11 @@ static void hoursAnimTripleFill(MilestoneCtx &ctx, int leftOx, int centerOx, int
   for (int top = 2; top <= HOURS_SAND_COUNT; top += 2) {
     milestoneClear(ctx);
     hoursDrawTripleHourglasses(ctx, leftOx, centerOx, rightOx, top, 0);
-    milestoneFrameShow(ctx, 28, min(15, 8 + top));
+    milestoneFrameShow(ctx, 28, min(7, (int)top));
   }
   milestoneClear(ctx);
   hoursDrawTripleHourglasses(ctx, leftOx, centerOx, rightOx, HOURS_SAND_COUNT, 0);
-  milestoneFrameShow(ctx, 80, 14);
+  milestoneFrameShow(ctx, 80, 0);
 }
 
 static void hoursAnimTripleSandRush(MilestoneCtx &ctx, int leftOx, int centerOx,
@@ -315,13 +315,13 @@ static void hoursAnimTripleSandRush(MilestoneCtx &ctx, int leftOx, int centerOx,
         hoursDrawSandStreamAt(ctx, oxs[g], fallRows[step], max(1, fallRows[step] - 2));
         hoursDrawHourglassFrameAt(ctx, oxs[g], ctx.height - 1);
       }
-      milestoneFrameShow(ctx, 18, min(15, 11 + step));
+      milestoneFrameShow(ctx, 18, min(4, (int)step));
     }
     grainsDone += 2;
     milestoneClear(ctx);
     hoursDrawTripleHourglasses(ctx, leftOx, centerOx, rightOx,
                                HOURS_SAND_COUNT - grainsDone, grainsDone);
-    milestoneFrameShow(ctx, 16, 13);
+    milestoneFrameShow(ctx, 16, 0);
   }
 }
 
@@ -339,12 +339,12 @@ static void hoursAnimTripleDrain(MilestoneCtx &ctx, int leftOx, int centerOx, in
                                 step > 0 ? fallRows[step - 1] : -1);
         hoursDrawHourglassFrameAt(ctx, oxs[g], ctx.height - 1);
       }
-      milestoneFrameShow(ctx, step < 2 ? 28 : 20, min(15, 10 + step));
+      milestoneFrameShow(ctx, step < 2 ? 28 : 20, min(5, (int)step));
     }
     milestoneClear(ctx);
     hoursDrawTripleHourglasses(ctx, leftOx, centerOx, rightOx, HOURS_SAND_COUNT - grain - 1,
                                grain + 1);
-    milestoneFrameShow(ctx, 18, 12);
+    milestoneFrameShow(ctx, 18, 0);
   }
 }
 
@@ -355,7 +355,7 @@ static void hoursAnimTripleTickStorm(MilestoneCtx &ctx, int leftOx, int centerOx
       milestoneClear(ctx);
       hoursDrawWingTicks(ctx, tick);
       hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-      milestoneFrameShow(ctx, pass == 0 ? 32 : 24, min(15, 9 + tick));
+      milestoneFrameShow(ctx, pass == 0 ? 32 : 24, min(6, (int)tick));
     }
   }
 }
@@ -375,7 +375,7 @@ static void hoursAnimTripleChainBlasts(MilestoneCtx &ctx, int leftOx, int center
         }
       }
       hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-      milestoneFrameShow(ctx, 20, min(15, 8 + ring));
+      milestoneFrameShow(ctx, 20, min(7, (int)ring));
     }
     delay(15);
   }
@@ -395,7 +395,7 @@ static void hoursAnimTripleFireworks(MilestoneCtx &ctx, int leftOx, int centerOx
                                    0.58f + wave * 0.06f);
       }
       hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-      milestoneFrameShow(ctx, 26, min(15, 9 + frame / 3));
+      milestoneFrameShow(ctx, 26, min(6, frame / 3));
     }
     delay(35);
   }
@@ -412,7 +412,7 @@ static void hoursAnimTripleExplosionWave(MilestoneCtx &ctx, int leftOx, int cent
       milestoneDrawDiamondRing(ctx, ring + 1);
     }
     hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-    milestoneFrameShow(ctx, 34, min(15, 9 + ring));
+    milestoneFrameShow(ctx, 34, min(6, (int)ring));
   }
 }
 
@@ -429,14 +429,14 @@ static void hoursAnimTripleMegablast(MilestoneCtx &ctx, int leftOx, int centerOx
       milestoneDrawExplosionRing(ctx, rightOx, ctx.cy, ring / 2 + 1);
     }
     hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-    milestoneFrameShow(ctx, ring < 6 ? 22 : 30, min(15, 6 + ring / 2));
+    milestoneFrameShow(ctx, ring < 6 ? 22 : 30, min(9, ring / 2));
   }
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 75, 15);
+  milestoneFrameShow(ctx, 75, 0);
   milestoneClear(ctx);
   hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-  milestoneFrameShow(ctx, 50, 14);
+  milestoneFrameShow(ctx, 50, 0);
 }
 
 static void hoursAnimTripleSparkStorm(MilestoneCtx &ctx, int leftOx, int centerOx,
@@ -461,7 +461,7 @@ static void hoursAnimTripleSparkStorm(MilestoneCtx &ctx, int leftOx, int centerO
       }
     }
     hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-    milestoneFrameShow(ctx, 24, min(15, 7 + frame / 4));
+    milestoneFrameShow(ctx, 24, min(8, frame / 4));
   }
 }
 
@@ -470,21 +470,21 @@ static void hoursAnimTripleVictory(MilestoneCtx &ctx, int leftOx, int centerOx,
   milestoneAnimShockwaveFlashes(ctx, 2, 45, 35);
   milestoneClear(ctx);
   hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-  milestoneFrameShow(ctx, 60, 14);
+  milestoneFrameShow(ctx, 60, 0);
 
   for (int pulse = 0; pulse < 5; pulse++) {
     milestoneClear(ctx);
     hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-    milestoneFrameShow(ctx, pulse == 4 ? 100 : 55, pulse % 2 == 0 ? 15 : 12);
+    milestoneFrameShow(ctx, pulse == 4 ? 100 : 55, pulse % 2 == 0 ? 3 : 0);
     if (pulse < 4) {
       milestoneClear(ctx);
-      milestoneFrameShow(ctx, 22, 4);
+      milestoneFrameShow(ctx, 22, 0);
     }
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 85, 15);
+  milestoneFrameShow(ctx, 85, 0);
   milestoneAnimInwardCollapse(ctx, 32);
 }
 
@@ -495,14 +495,14 @@ static void hoursAnimTripleBuildTogether(MilestoneCtx &ctx, int leftOx, int cent
     hoursDrawHourglassFrameAt(ctx, leftOx, row);
     hoursDrawHourglassFrameAt(ctx, centerOx, row);
     hoursDrawHourglassFrameAt(ctx, rightOx, row);
-    milestoneFrameShow(ctx, 30, min(15, 8 + row));
+    milestoneFrameShow(ctx, 30, min(7, (int)row));
   }
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 50, 15);
+  milestoneFrameShow(ctx, 50, 0);
   milestoneClear(ctx);
   hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-  milestoneFrameShow(ctx, 55, 14);
+  milestoneFrameShow(ctx, 55, 0);
 }
 
 static void hoursAnimTripleMultiBlast(MilestoneCtx &ctx, int leftOx, int centerOx,
@@ -517,28 +517,28 @@ static void hoursAnimTripleMultiBlast(MilestoneCtx &ctx, int leftOx, int centerO
       }
     }
     hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-    milestoneFrameShow(ctx, ring < 7 ? 18 : 26, min(15, 6 + ring / 2));
+    milestoneFrameShow(ctx, ring < 7 ? 18 : 26, min(9, ring / 2));
   }
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 80, 15);
+  milestoneFrameShow(ctx, 80, 0);
   milestoneClear(ctx);
   hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-  milestoneFrameShow(ctx, 55, 14);
+  milestoneFrameShow(ctx, 55, 0);
 }
 
 static void hoursRestoreTripleHold(MilestoneCtx &ctx, int leftOx, int centerOx, int rightOx,
                                    uint16_t holdMs) {
   milestoneClear(ctx);
   hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-  milestoneFrameShow(ctx, holdMs, 14);
+  milestoneFrameShow(ctx, holdMs, 0);
 }
 
 // +1M hours — triple sand story, firework barrage, shockwave, victory pulses.
 static void hoursAnimTier1M(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 14);
+  milestoneEffectBegin(ctx, 0);
 
   const int leftOx = ctx.cx - 10;
   const int centerOx = ctx.cx;
@@ -576,16 +576,16 @@ static void hoursAnimTier1M(MD_Parola &display) {
   for (int pulse = 0; pulse < 4; pulse++) {
     milestoneClear(ctx);
     hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-    milestoneFrameShow(ctx, pulse == 3 ? 95 : 55, pulse % 2 == 0 ? 15 : 11);
+    milestoneFrameShow(ctx, pulse == 3 ? 95 : 55, pulse % 2 == 0 ? 4 : 0);
     if (pulse < 3) {
       milestoneClear(ctx);
-      milestoneFrameShow(ctx, 22, 4);
+      milestoneFrameShow(ctx, 22, 0);
     }
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 95, 15);
+  milestoneFrameShow(ctx, 95, 0);
   milestoneAnimFinalFlashes(ctx, 3, 60, 35, 125);
   milestoneAnimInwardCollapse(ctx, 30);
   milestoneEffectEnd(ctx);
@@ -595,7 +595,7 @@ static void hoursAnimTier1M(MD_Parola &display) {
 static void hoursAnimTier10M(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 14);
+  milestoneEffectBegin(ctx, 0);
 
   const int leftOx = ctx.cx - 10;
   const int centerOx = ctx.cx;
@@ -652,7 +652,7 @@ static void hoursAnimTier10M(MD_Parola &display) {
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 110, 15);
+  milestoneFrameShow(ctx, 110, 0);
   milestoneAnimScreenShake(ctx, 8, 16);
   hoursRestoreTripleHold(ctx, leftOx, centerOx, rightOx, 50);
 
@@ -662,10 +662,10 @@ static void hoursAnimTier10M(MD_Parola &display) {
   for (int pulse = 0; pulse < 6; pulse++) {
     milestoneClear(ctx);
     hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-    milestoneFrameShow(ctx, pulse == 5 ? 105 : 58, pulse % 2 == 0 ? 15 : 11);
+    milestoneFrameShow(ctx, pulse == 5 ? 105 : 58, pulse % 2 == 0 ? 4 : 0);
     if (pulse < 5) {
       milestoneClear(ctx);
-      milestoneFrameShow(ctx, 20, 4);
+      milestoneFrameShow(ctx, 20, 0);
     }
   }
 
@@ -687,7 +687,7 @@ static void hoursAnimTickSweep(MilestoneCtx &ctx) {
       }
     }
     hoursDrawHourglassFrame(ctx, ctx.height - 1);
-    milestoneFrameShow(ctx, 46, min(15, 9 + i));
+    milestoneFrameShow(ctx, 46, min(6, (int)i));
   }
 }
 
@@ -712,7 +712,7 @@ static void hoursAnimTimeRipple(MilestoneCtx &ctx, int bands) {
       }
     }
     hoursDrawHourglassFrame(ctx, ctx.height - 1);
-    milestoneFrameShow(ctx, 50, min(15, 10 + band * 2));
+    milestoneFrameShow(ctx, 50, min(5, band * 2));
   }
 }
 
@@ -726,7 +726,7 @@ static void hoursAnimBottomSettle(MilestoneCtx &ctx) {
     ctx.matrix->setPoint(row, ctx.colStart + col, true);
     ctx.matrix->setPoint(g % 2 == 0 ? 3 : 4, ctx.colStart + ctx.cx, true);
     hoursDrawHourglassFrame(ctx, ctx.height - 1);
-    milestoneFrameShow(ctx, 42, min(15, 9 + g / 2));
+    milestoneFrameShow(ctx, 42, min(6, g / 2));
   }
 }
 
@@ -734,18 +734,18 @@ static void hoursAnimBottomSettle(MilestoneCtx &ctx) {
 static void hoursAnimTier100(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 12);
+  milestoneEffectBegin(ctx, 0);
 
   for (int row = 0; row < ctx.height; row++) {
     milestoneClear(ctx);
     hoursDrawHourglassFrame(ctx, row);
-    milestoneFrameShow(ctx, 45, min(15, 8 + row));
+    milestoneFrameShow(ctx, 45, min(7, (int)row));
   }
 
   milestoneClear(ctx);
   hoursDrawHourglassFrame(ctx, ctx.height - 1);
   hoursDrawTopSand(ctx, HOURS_SAND_COUNT);
-  milestoneFrameShow(ctx, 120, 14);
+  milestoneFrameShow(ctx, 120, 0);
 
   const int8_t fallRows[] = {1, 2, 3, 4, 5, 6};
   const int fallSteps = 6;
@@ -756,38 +756,38 @@ static void hoursAnimTier100(MD_Parola &display) {
       hoursDrawBottomSand(ctx, grain);
       hoursDrawFallingGrain(ctx, fallRows[step], step > 0 ? fallRows[step - 1] : -1);
       hoursDrawHourglassFrame(ctx, ctx.height - 1);
-      milestoneFrameShow(ctx, step < 2 ? 42 : 34, min(15, 10 + step));
+      milestoneFrameShow(ctx, step < 2 ? 42 : 34, min(5, (int)step));
     }
     milestoneClear(ctx);
     hoursDrawHourglassFrame(ctx, ctx.height - 1);
     hoursDrawTopSand(ctx, HOURS_SAND_COUNT - grain - 1);
     hoursDrawBottomSand(ctx, grain + 1);
-    milestoneFrameShow(ctx, 26, 12);
+    milestoneFrameShow(ctx, 26, 0);
   }
 
   milestoneClear(ctx);
   hoursDrawHourglassFrame(ctx, ctx.height - 1);
   hoursDrawBottomSand(ctx, HOURS_SAND_COUNT);
-  milestoneFrameShow(ctx, 140, 14);
+  milestoneFrameShow(ctx, 140, 0);
 
   for (int ring = 1; ring <= 3; ring++) {
     milestoneClear(ctx);
     hoursDrawBottomSand(ctx, HOURS_SAND_COUNT);
     milestoneDrawDiamondRing(ctx, ring + 4);
     hoursDrawHourglassFrame(ctx, ctx.height - 1);
-    milestoneFrameShow(ctx, 48, min(15, 9 + ring * 2));
+    milestoneFrameShow(ctx, 48, min(6, ring * 2));
   }
 
   for (int pulse = 0; pulse < 2; pulse++) {
     milestoneClear(ctx);
     hoursDrawHourglassFrame(ctx, ctx.height - 1);
     hoursDrawBottomSand(ctx, HOURS_SAND_COUNT);
-    milestoneFrameShow(ctx, pulse == 0 ? 90 : 55, pulse == 0 ? 14 : 15);
+    milestoneFrameShow(ctx, pulse == 0 ? 90 : 55, pulse == 0 ? 0 : 1);
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 65, 15);
+  milestoneFrameShow(ctx, 65, 0);
   milestoneEffectEnd(ctx);
 }
 
@@ -795,7 +795,7 @@ static void hoursAnimTier100(MD_Parola &display) {
 static void hoursAnimTier1K(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 13);
+  milestoneEffectBegin(ctx, 0);
 
   for (int pulse = 0; pulse < 3; pulse++) {
     milestoneClear(ctx);
@@ -803,7 +803,7 @@ static void hoursAnimTier1K(MD_Parola &display) {
     if (pulse > 0) {
       hoursDrawClockTicks(ctx);
     }
-    milestoneFrameShow(ctx, pulse == 2 ? 70 : 50, min(15, 10 + pulse * 2));
+    milestoneFrameShow(ctx, pulse == 2 ? 70 : 50, min(5, pulse * 2));
   }
 
   hoursAnimTickSweep(ctx);
@@ -811,18 +811,18 @@ static void hoursAnimTier1K(MD_Parola &display) {
   for (int top = 2; top <= HOURS_SAND_COUNT; top += 2) {
     milestoneClear(ctx);
     hoursDrawFilledHourglass(ctx, top, 0);
-    milestoneFrameShow(ctx, 36, min(15, 9 + top / 2));
+    milestoneFrameShow(ctx, 36, min(6, top / 2));
   }
 
   milestoneClear(ctx);
   hoursDrawFilledHourglass(ctx, HOURS_SAND_COUNT, 0);
-  milestoneFrameShow(ctx, 100, 14);
+  milestoneFrameShow(ctx, 100, 0);
 
   for (int tick = 0; tick < 4; tick++) {
     milestoneClear(ctx);
     hoursDrawFilledHourglass(ctx, HOURS_SAND_COUNT, 0);
     hoursDrawClockTicks(ctx);
-    milestoneFrameShow(ctx, tick == 3 ? 80 : 55, tick % 2 == 0 ? 14 : 11);
+    milestoneFrameShow(ctx, tick == 3 ? 80 : 55, tick % 2 == 0 ? 3 : 0);
   }
 
   const int8_t fallRows[] = {1, 2, 3, 4, 5, 6};
@@ -844,24 +844,24 @@ static void hoursAnimTier1K(MD_Parola &display) {
         ctx.matrix->setPoint(4, ctx.colStart + ctx.cx, true);
       }
       hoursDrawHourglassFrame(ctx, ctx.height - 1);
-      milestoneFrameShow(ctx, 30, min(15, 11 + step));
+      milestoneFrameShow(ctx, 30, min(4, (int)step));
     }
     grainsDone += 2;
     milestoneClear(ctx);
     hoursDrawFilledHourglass(ctx, HOURS_SAND_COUNT - grainsDone, grainsDone);
-    milestoneFrameShow(ctx, 26, 12);
+    milestoneFrameShow(ctx, 26, 0);
   }
 
   milestoneClear(ctx);
   hoursDrawFilledHourglass(ctx, 0, HOURS_SAND_COUNT);
-  milestoneFrameShow(ctx, 110, 14);
+  milestoneFrameShow(ctx, 110, 0);
 
   hoursAnimTimeRipple(ctx, 4);
   hoursAnimBottomSettle(ctx);
 
   milestoneClear(ctx);
   hoursDrawFilledHourglass(ctx, 0, HOURS_SAND_COUNT);
-  milestoneFrameShow(ctx, 90, 14);
+  milestoneFrameShow(ctx, 90, 0);
 
   for (int ring = 1; ring <= 5; ring++) {
     milestoneClear(ctx);
@@ -869,7 +869,7 @@ static void hoursAnimTier1K(MD_Parola &display) {
     hoursDrawBottomSand(ctx, HOURS_SAND_COUNT);
     milestoneDrawDiamondRing(ctx, ring + 3);
     hoursDrawHourglassFrame(ctx, ctx.height - 1);
-    milestoneFrameShow(ctx, 46, min(15, 9 + ring));
+    milestoneFrameShow(ctx, 46, min(6, (int)ring));
   }
 
   for (int frame = 0; frame < 22; frame++) {
@@ -894,20 +894,20 @@ static void hoursAnimTier1K(MD_Parola &display) {
       }
     }
     hoursDrawHourglassFrame(ctx, ctx.height - 1);
-    milestoneFrameShow(ctx, 32, min(15, 7 + frame / 4));
+    milestoneFrameShow(ctx, 32, min(8, frame / 4));
   }
 
   for (int pulse = 0; pulse < 3; pulse++) {
     milestoneClear(ctx);
     hoursDrawFilledHourglass(ctx, 0, HOURS_SAND_COUNT);
-    milestoneFrameShow(ctx, pulse == 2 ? 90 : 65, pulse % 2 == 0 ? 15 : 12);
+    milestoneFrameShow(ctx, pulse == 2 ? 90 : 65, pulse % 2 == 0 ? 3 : 0);
     milestoneClear(ctx);
-    milestoneFrameShow(ctx, 35, 5);
+    milestoneFrameShow(ctx, 35, 0);
   }
 
   milestoneClear(ctx);
   milestoneFillAll(ctx);
-  milestoneFrameShow(ctx, 75, 15);
+  milestoneFrameShow(ctx, 75, 0);
   milestoneEffectEnd(ctx);
 }
 
@@ -915,7 +915,7 @@ static void hoursAnimTier1K(MD_Parola &display) {
 static void hoursAnimTier10K(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 14);
+  milestoneEffectBegin(ctx, 0);
 
   const int leftOx = ctx.cx - 9;
   const int rightOx = ctx.cx + 9;
@@ -931,7 +931,7 @@ static void hoursAnimTier10K(MD_Parola &display) {
 static void hoursAnimTier100K(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 14);
+  milestoneEffectBegin(ctx, 0);
 
   const int leftOx = ctx.cx - 10;
   const int centerOx = ctx.cx;
@@ -947,7 +947,7 @@ static void hoursAnimTier100K(MD_Parola &display) {
 
   milestoneClear(ctx);
   hoursStampTripleFull(ctx, leftOx, centerOx, rightOx);
-  milestoneFrameShow(ctx, 100, 14);
+  milestoneFrameShow(ctx, 100, 0);
 
   hoursAnimTripleTickStorm(ctx, leftOx, centerOx, rightOx);
   hoursAnimTripleChainBlasts(ctx, leftOx, centerOx, rightOx);

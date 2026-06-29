@@ -101,14 +101,14 @@ static void drawConfetti(MilestoneCtx &ctx, uint8_t frame) {
 void runAprilFoolsHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 14; frame++) {
     milestoneClear(ctx);
     drawQuestionMark(ctx, ctx.cx - 12 + frame % 3, 0, frame % 2 == 0);
     drawQuestionMark(ctx, ctx.cx + 5 - frame % 3, 0, frame % 2 == 1);
     drawGlitchBars(ctx, frame);
-    milestoneFrameShow(ctx, 65, frame % 2 == 0 ? 13 : 7);
+    milestoneFrameShow(ctx, 65, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
@@ -117,7 +117,7 @@ void runAprilFoolsHolidayAnimation(MD_Parola &display) {
     if (frame % 3 == 0) {
       drawConfetti(ctx, frame);
     }
-    milestoneFrameShow(ctx, 75, 8 + frame % 6);
+    milestoneFrameShow(ctx, 75, frame % 6);
   }
 
   for (uint8_t frame = 0; frame < 12; frame++) {
@@ -127,7 +127,7 @@ void runAprilFoolsHolidayAnimation(MD_Parola &display) {
       drawQuestionMark(ctx, ctx.cx - 17, 0, false);
       drawQuestionMark(ctx, ctx.cx + 11, 0, false);
     }
-    milestoneFrameShow(ctx, 90, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 90, frame % 2 == 0 ? 6 : 0);
   }
 
   for (int flash = 0; flash < 5; flash++) {
@@ -139,14 +139,14 @@ void runAprilFoolsHolidayAnimation(MD_Parola &display) {
       drawPrankFace(ctx, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 45 : 85,
-                       flash % 2 == 0 ? 15 : 8);
+                       flash % 2 == 0 ? 7 : 0);
   }
 
   for (uint8_t frame = 0; frame < 14; frame++) {
     milestoneClear(ctx);
     drawConfetti(ctx, frame);
     drawJesterHat(ctx, ctx.cx, frame);
-    milestoneFrameShow(ctx, 48, frame % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 48, frame % 2 == 0 ? 5 : 0);
   }
 
   milestoneEffectEnd(ctx);

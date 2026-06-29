@@ -139,38 +139,38 @@ static void drawSpringSparkles(MilestoneCtx &ctx, uint8_t frame) {
 void runEasterHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawEgg(ctx, ctx.cx, 0, frame);
-    milestoneFrameShow(ctx, 80, frame % 2 == 0 ? 13 : 8);
+    milestoneFrameShow(ctx, 80, frame % 2 == 0 ? 5 : 0);
   }
 
   for (uint8_t frame = 0; frame < 12; frame++) {
     milestoneClear(ctx);
     drawCrackedEgg(ctx, ctx.cx, frame);
-    milestoneFrameShow(ctx, 100, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 100, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
     milestoneClear(ctx);
     drawChick(ctx, ctx.cx, 7, frame);
     drawSpringSparkles(ctx, frame);
-    milestoneFrameShow(ctx, 80, frame % 2 == 0 ? 14 : 9);
+    milestoneFrameShow(ctx, 80, frame % 2 == 0 ? 5 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawBunnyHead(ctx, ctx.cx, frame);
-    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 13 : 8);
+    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 5 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawEggTrail(ctx, frame);
     drawBunnyHead(ctx, ctx.cx - 14 + frame / 2, frame);
-    milestoneFrameShow(ctx, 70, 8 + frame % 5);
+    milestoneFrameShow(ctx, 70, frame % 5);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -182,7 +182,7 @@ void runEasterHolidayAnimation(MD_Parola &display) {
       drawSmallEgg(ctx, ctx.cx + 14, 5, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 100 : 120,
-                       flash % 2 == 0 ? 12 : 15);
+                       flash % 2 == 0 ? 0 : 3);
   }
 
   milestoneEffectEnd(ctx);

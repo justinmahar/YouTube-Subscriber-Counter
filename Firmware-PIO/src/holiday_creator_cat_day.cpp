@@ -144,38 +144,38 @@ static void drawCatPlayCombo(MilestoneCtx &ctx, uint8_t frame) {
 void runCreatorCatDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t grow = 0; grow < 10; grow++) {
     milestoneClear(ctx);
     drawPlayButton(ctx, ctx.cx - 11, 0, grow, grow > 4);
-    milestoneFrameShow(ctx, 80, 7 + grow / 2);
+    milestoneFrameShow(ctx, 80, grow / 2);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
     milestoneClear(ctx);
     drawPlayButton(ctx, ctx.cx - 11, 0, frame, true);
     drawCreatorSparkles(ctx, frame);
-    milestoneFrameShow(ctx, 55, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 55, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawCatFace(ctx, ctx.cx, frame);
-    milestoneFrameShow(ctx, 95, frame % 8 == 6 ? 8 : 14);
+    milestoneFrameShow(ctx, 95, frame % 8 == 6 ? 0 : 6);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawPawTrail(ctx, frame);
-    milestoneFrameShow(ctx, 70, 8 + frame % 5);
+    milestoneFrameShow(ctx, 70, frame % 5);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawCatPlayCombo(ctx, frame);
     drawCreatorSparkles(ctx, frame);
-    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 5 : 0);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -186,7 +186,7 @@ void runCreatorCatDayHolidayAnimation(MD_Parola &display) {
       drawCatPlayCombo(ctx, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 110 : 90,
-                       flash % 2 == 0 ? 12 : 15);
+                       flash % 2 == 0 ? 0 : 3);
   }
 
   milestoneEffectEnd(ctx);

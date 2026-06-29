@@ -136,7 +136,7 @@ static void drawSanta(MilestoneCtx &ctx, int leftCol, uint8_t frame) {
 void runChristmasHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 7);
+  milestoneEffectBegin(ctx, 0);
 
   struct Snowflake {
     int x;
@@ -162,7 +162,7 @@ void runChristmasHolidayAnimation(MD_Parola &display) {
       }
       drawSnowflake(ctx, flakes[i].x, flakes[i].y, flakes[i].wide);
     }
-    milestoneFrameShow(ctx, 55, 7 + frame % 4);
+    milestoneFrameShow(ctx, 55, frame % 4);
   }
 
   for (int frame = 0; frame < ctx.width + 14; frame++) {
@@ -173,7 +173,7 @@ void runChristmasHolidayAnimation(MD_Parola &display) {
       drawSnowflake(ctx, x, y, flake % 3 == 0);
     }
     drawSanta(ctx, frame - 10, frame);
-    milestoneFrameShow(ctx, 45, frame % 2 == 0 ? 13 : 9);
+    milestoneFrameShow(ctx, 45, frame % 2 == 0 ? 4 : 0);
   }
 
   for (uint8_t reveal = 1; reveal <= 8; reveal++) {
@@ -185,7 +185,7 @@ void runChristmasHolidayAnimation(MD_Parola &display) {
     if (reveal >= 6) {
       drawPresents(ctx, reveal);
     }
-    milestoneFrameShow(ctx, 120, min(15, 7 + reveal));
+    milestoneFrameShow(ctx, 120, min(8, (int)reveal));
   }
 
   for (int twinkle = 0; twinkle < 12; twinkle++) {
@@ -198,7 +198,7 @@ void runChristmasHolidayAnimation(MD_Parola &display) {
       drawSnowflake(ctx, ctx.width - 3 - twinkle / 2, 6 - (twinkle % 4),
                     twinkle % 2 == 1);
     }
-    milestoneFrameShow(ctx, 105, twinkle % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 105, twinkle % 2 == 0 ? 6 : 0);
   }
 
   for (int glow = 0; glow < 8; glow++) {
@@ -212,7 +212,7 @@ void runChristmasHolidayAnimation(MD_Parola &display) {
         setChristmasPixel(ctx, min(ctx.width - 1, ctx.cx + 11 - row), row);
       }
     }
-    milestoneFrameShow(ctx, 55, min(15, 8 + glow));
+    milestoneFrameShow(ctx, 55, min(7, (int)glow));
   }
 
   milestoneEffectEnd(ctx);

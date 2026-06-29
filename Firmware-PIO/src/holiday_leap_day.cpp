@@ -126,12 +126,12 @@ static void drawExtraDaySparkles(MilestoneCtx &ctx, uint8_t frame) {
 void runLeapDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 16; frame++) {
     milestoneClear(ctx);
     drawBig29(ctx, ctx.cx - 6, 0, frame);
-    milestoneFrameShow(ctx, 90, frame % 2 == 0 ? 13 : 8);
+    milestoneFrameShow(ctx, 90, frame % 2 == 0 ? 5 : 0);
   }
 
   for (uint8_t frame = 0; frame < 24; frame++) {
@@ -140,14 +140,14 @@ void runLeapDayHolidayAnimation(MD_Parola &display) {
     drawLeapArc(ctx, frame);
     int frogX = 5 + (frame * (ctx.width - 10)) / 23;
     drawFrog(ctx, frogX, 7, frame);
-    milestoneFrameShow(ctx, 60, 8 + frame % 5);
+    milestoneFrameShow(ctx, 60, frame % 5);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawPlusOne(ctx, ctx.cx - 5, 1);
     drawExtraDaySparkles(ctx, frame);
-    milestoneFrameShow(ctx, 65, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 65, frame % 2 == 0 ? 6 : 0);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -159,7 +159,7 @@ void runLeapDayHolidayAnimation(MD_Parola &display) {
       drawPlusOne(ctx, ctx.cx + 10, 1);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 110 : 130,
-                       flash % 2 == 0 ? 12 : 15);
+                       flash % 2 == 0 ? 0 : 3);
   }
 
   milestoneEffectEnd(ctx);

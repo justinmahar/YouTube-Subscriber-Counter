@@ -123,32 +123,32 @@ static void drawBigUSA(MilestoneCtx &ctx, int left, int top, uint8_t frame) {
 void runPresidentsDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawFlagWave(ctx, frame);
-    milestoneFrameShow(ctx, 60, 7 + frame % 5);
+    milestoneFrameShow(ctx, 60, frame % 5);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
     milestoneClear(ctx);
     drawTopHatProfile(ctx, ctx.cx, frame);
-    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 14 : 8);
+    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
     milestoneClear(ctx);
     drawColumns(ctx, frame);
     drawStarField(ctx, frame);
-    milestoneFrameShow(ctx, 85, frame % 2 == 0 ? 13 : 8);
+    milestoneFrameShow(ctx, 85, frame % 2 == 0 ? 5 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawBigUSA(ctx, ctx.cx - 8, 1, frame);
     drawStarField(ctx, frame);
-    milestoneFrameShow(ctx, 70, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 70, frame % 2 == 0 ? 6 : 0);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -160,7 +160,7 @@ void runPresidentsDayHolidayAnimation(MD_Parola &display) {
       drawStar(ctx, ctx.cx + 14, 2, true);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 95 : 130,
-                       flash % 2 == 0 ? 10 : 15);
+                       flash % 2 == 0 ? 0 : 5);
   }
 
   milestoneEffectEnd(ctx);

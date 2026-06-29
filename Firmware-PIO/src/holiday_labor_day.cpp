@@ -143,12 +143,12 @@ static void drawRestScene(MilestoneCtx &ctx, uint8_t frame) {
 void runLaborDayHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t reveal = 1; reveal <= 7; reveal++) {
     milestoneClear(ctx);
     drawHardHat(ctx, ctx.cx, 0, reveal);
-    milestoneFrameShow(ctx, 120, 7 + reveal);
+    milestoneFrameShow(ctx, 120, reveal);
   }
 
   for (uint8_t frame = 0; frame < 16; frame++) {
@@ -157,7 +157,7 @@ void runLaborDayHolidayAnimation(MD_Parola &display) {
     if (frame % 4 < 2) {
       drawWorkSpark(ctx, ctx.cx + 14, 3, frame);
     }
-    milestoneFrameShow(ctx, 70, frame % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 70, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
@@ -165,19 +165,19 @@ void runLaborDayHolidayAnimation(MD_Parola &display) {
     drawHammer(ctx, ctx.cx - 6, 3, frame);
     drawWrench(ctx, ctx.cx + 8, 2, frame);
     drawWorkSpark(ctx, ctx.cx, 3, frame);
-    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 14 : 8);
+    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawWorksite(ctx, frame);
-    milestoneFrameShow(ctx, 80, 8 + frame % 5);
+    milestoneFrameShow(ctx, 80, frame % 5);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawRestScene(ctx, frame);
-    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 13 : 8);
+    milestoneFrameShow(ctx, 95, frame % 2 == 0 ? 5 : 0);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -188,7 +188,7 @@ void runLaborDayHolidayAnimation(MD_Parola &display) {
       drawRestScene(ctx, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 100 : 130,
-                       flash % 2 == 0 ? 14 : 10);
+                       flash % 2 == 0 ? 4 : 0);
   }
 
   milestoneEffectEnd(ctx);

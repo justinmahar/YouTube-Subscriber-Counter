@@ -1,5 +1,6 @@
 #include "milestone_animations.h"
 
+#include "firmware_config.h"
 #include "milestone_hours_animations.h"
 #include "milestone_helpers.h"
 #include "milestone_subs_animations.h"
@@ -75,7 +76,7 @@ static bool hasMilestoneAnimation(MilestoneAnimation animation) {
 static void runMilestoneIntroAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 12);
+  milestoneEffectBegin(ctx, 0);
 
   const int cornerX[4] = {0, ctx.width - 1, 0, ctx.width - 1};
   const int cornerY[4] = {0, 0, ctx.height - 1, ctx.height - 1};
@@ -95,7 +96,7 @@ static void runMilestoneIntroAnimation(MD_Parola &display) {
     if (frame > 5) {
       milestoneDrawDiamondRing(ctx, frame - 5);
     }
-    milestoneFrameShow(ctx, 36, min(15, 8 + frame / 2));
+    milestoneFrameShow(ctx, 36, min(7, frame / 2));
   }
 
   for (int ring = 0; ring <= 16; ring++) {
@@ -121,7 +122,7 @@ static void runMilestoneIntroAnimation(MD_Parola &display) {
         }
       }
     }
-    milestoneFrameShow(ctx, ring < 8 ? 24 : 34, min(15, 9 + ring / 2));
+    milestoneFrameShow(ctx, ring < 8 ? 24 : 34, min(6, ring / 2));
   }
 
   for (int frame = 0; frame < 18; frame++) {
@@ -137,15 +138,15 @@ static void runMilestoneIntroAnimation(MD_Parola &display) {
                            ((row + frame + 2) % 4) < 2);
     }
     milestoneDrawDiamondRing(ctx, 2 + (frame % 4));
-    milestoneFrameShow(ctx, 42, frame % 2 == 0 ? 15 : 11);
+    milestoneFrameShow(ctx, 42, frame % 2 == 0 ? 4 : 0);
   }
 
   for (int pulse = 0; pulse < 3; pulse++) {
     milestoneClear(ctx);
     milestoneFillAll(ctx);
-    milestoneFrameShow(ctx, pulse == 2 ? 110 : 60, 15);
+    milestoneFrameShow(ctx, pulse == 2 ? 110 : 60, 0);
     milestoneClear(ctx);
-    milestoneFrameShow(ctx, 38, 5);
+    milestoneFrameShow(ctx, 38, 0);
   }
   milestoneEffectEnd(ctx);
 
@@ -154,7 +155,7 @@ static void runMilestoneIntroAnimation(MD_Parola &display) {
   matrix->clear();
   matrix->update();
   display.displayClear();
-  display.setIntensity(12);
+  display.setIntensity(animationDisplayIntensity(0));
   display.setTextAlignment(PA_LEFT);
   display.displayScroll("Milestone hit!", PA_LEFT, PA_SCROLL_LEFT, 55);
   while (!display.displayAnimate()) {
@@ -164,7 +165,7 @@ static void runMilestoneIntroAnimation(MD_Parola &display) {
 }
 
 void runMilestoneAnimation(MD_Parola &display, MilestoneAnimation animation) {
-  if (hasMilestoneAnimation(animation)) {
+  if (hasMilestoneAnimation(animation) && !DEBUG_DISABLE_ANIMATION_INTROS) {
     runMilestoneIntroAnimation(display);
   }
 

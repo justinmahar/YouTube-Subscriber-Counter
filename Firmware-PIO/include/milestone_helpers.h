@@ -17,9 +17,11 @@ struct MilestoneCtx {
 };
 
 void milestoneCtxInit(MD_Parola &display, MilestoneCtx &ctx);
-void milestoneEffectBegin(MilestoneCtx &ctx, uint8_t intensity = 13);
+void animationBrightnessConfigure(bool boostEnabled, uint8_t boostAmount);
+uint8_t animationDisplayIntensity(uint8_t normalizedIntensity);
+void milestoneEffectBegin(MilestoneCtx &ctx, uint8_t intensity = 0);
 void milestoneEffectEnd(MilestoneCtx &ctx);
-void milestoneFrameShow(MilestoneCtx &ctx, uint16_t delayMs, uint8_t intensity = 15);
+void milestoneFrameShow(MilestoneCtx &ctx, uint16_t delayMs, uint8_t intensity = 0);
 
 void milestoneClear(MilestoneCtx &ctx);
 void milestoneFillAll(MilestoneCtx &ctx);

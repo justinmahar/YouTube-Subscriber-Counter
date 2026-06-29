@@ -139,18 +139,18 @@ static void drawHarvestBurst(MilestoneCtx &ctx, int originX, int originY,
 void runThanksgivingHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 18; frame++) {
     milestoneClear(ctx);
     drawFallingLeaves(ctx, frame);
-    milestoneFrameShow(ctx, 58, 7 + frame % 5);
+    milestoneFrameShow(ctx, 58, frame % 5);
   }
 
   for (uint8_t reveal = 1; reveal <= 7; reveal++) {
     milestoneClear(ctx);
     drawTurkey(ctx, ctx.cx, reveal, reveal);
-    milestoneFrameShow(ctx, 135, 8 + reveal);
+    milestoneFrameShow(ctx, 135, reveal);
   }
 
   for (uint8_t gobble = 0; gobble < 12; gobble++) {
@@ -159,14 +159,14 @@ void runThanksgivingHolidayAnimation(MD_Parola &display) {
     if (gobble % 3 == 0) {
       drawLeaf(ctx, ctx.cx - 13 + gobble, 1 + gobble % 5, true);
     }
-    milestoneFrameShow(ctx, 90, gobble % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 90, gobble % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 10; frame++) {
     milestoneClear(ctx);
     drawPilgrimHat(ctx, ctx.cx, frame);
     drawFallingLeaves(ctx, frame);
-    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 14 : 8);
+    milestoneFrameShow(ctx, 75, frame % 2 == 0 ? 6 : 0);
   }
 
   for (uint8_t frame = 0; frame < 18; frame++) {
@@ -175,8 +175,8 @@ void runThanksgivingHolidayAnimation(MD_Parola &display) {
     if (frame < 10) {
       drawTurkey(ctx, ctx.cx, 7, frame);
     }
-    uint8_t intensity = 8 + frame / 2;
-    milestoneFrameShow(ctx, 45, intensity > 15 ? 15 : intensity);
+    uint8_t intensity = frame / 2;
+    milestoneFrameShow(ctx, 45, intensity > 7 ? 7 : intensity);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -187,7 +187,7 @@ void runThanksgivingHolidayAnimation(MD_Parola &display) {
       drawTurkey(ctx, ctx.cx, 7, flash);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 55 : 95,
-                       flash % 2 == 0 ? 15 : 8);
+                       flash % 2 == 0 ? 7 : 0);
   }
 
   milestoneEffectEnd(ctx);

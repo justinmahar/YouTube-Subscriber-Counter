@@ -63,24 +63,24 @@ static void drawArrow(MilestoneCtx &ctx, int tipX, int y) {
 void runValentinesHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 0);
 
   int heartLeft = ctx.cx - 7;
   for (int beat = 0; beat < 4; beat++) {
     milestoneClear(ctx);
     drawHeart(ctx, heartLeft + 2, 0, false);
-    milestoneFrameShow(ctx, 130, 8);
+    milestoneFrameShow(ctx, 130, 0);
 
     milestoneClear(ctx);
     drawHeart(ctx, heartLeft, 1, beat % 2 == 0);
-    milestoneFrameShow(ctx, 170, 15);
+    milestoneFrameShow(ctx, 170, 0);
   }
 
   for (int tip = -2; tip <= ctx.width + 10; tip += 2) {
     milestoneClear(ctx);
     drawHeart(ctx, heartLeft, 1, false);
     drawArrow(ctx, tip, 3);
-    milestoneFrameShow(ctx, 45, 13);
+    milestoneFrameShow(ctx, 45, 0);
   }
 
   for (int pulse = 0; pulse < 5; pulse++) {
@@ -92,7 +92,7 @@ void runValentinesHolidayAnimation(MD_Parola &display) {
       int py = 3 + (int)((pulse + 2) * sinf(angle) * 0.6f);
       setValentinePixel(ctx, px, py, pulse % 2 == 0 || spark % 2 == 0);
     }
-    milestoneFrameShow(ctx, 95, pulse % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 95, pulse % 2 == 0 ? 5 : 0);
   }
 
   for (int shower = 0; shower < 14; shower++) {
@@ -104,8 +104,8 @@ void runValentinesHolidayAnimation(MD_Parola &display) {
       setValentinePixel(ctx, x, y);
       setValentinePixel(ctx, x + 1, y);
     }
-    uint8_t intensity = 9 + shower / 2;
-    milestoneFrameShow(ctx, 45, intensity > 15 ? 15 : intensity);
+    uint8_t intensity = shower / 2;
+    milestoneFrameShow(ctx, 45, intensity > 7 ? 7 : intensity);
   }
 
   milestoneEffectEnd(ctx);

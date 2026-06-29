@@ -95,12 +95,12 @@ static void drawBurst(MilestoneCtx &ctx, int originX, int originY, uint8_t frame
 void runCincoDeMayoHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 9);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t reveal = 1; reveal <= 8; reveal++) {
     milestoneClear(ctx);
     drawSombrero(ctx, ctx.cx, reveal, reveal);
-    milestoneFrameShow(ctx, 120, 7 + reveal);
+    milestoneFrameShow(ctx, 120, reveal);
   }
 
   for (uint8_t shake = 0; shake < 16; shake++) {
@@ -109,7 +109,7 @@ void runCincoDeMayoHolidayAnimation(MD_Parola &display) {
     if (shake % 3 == 0) {
       drawConfetti(ctx, shake);
     }
-    milestoneFrameShow(ctx, 65, shake % 2 == 0 ? 15 : 9);
+    milestoneFrameShow(ctx, 65, shake % 2 == 0 ? 6 : 0);
   }
 
   const int burstX[4] = {ctx.width / 5, 2 * ctx.width / 5, 3 * ctx.width / 5,
@@ -124,8 +124,8 @@ void runCincoDeMayoHolidayAnimation(MD_Parola &display) {
         drawBurst(ctx, burstX[burst], burstY[burst], localFrame);
       }
     }
-    uint8_t intensity = 8 + frame / 2;
-    milestoneFrameShow(ctx, 45, intensity > 15 ? 15 : intensity);
+    uint8_t intensity = frame / 2;
+    milestoneFrameShow(ctx, 45, intensity > 7 ? 7 : intensity);
   }
 
   for (int flash = 0; flash < 4; flash++) {
@@ -137,14 +137,14 @@ void runCincoDeMayoHolidayAnimation(MD_Parola &display) {
       drawConfetti(ctx, flash * 3);
     }
     milestoneFrameShow(ctx, flash % 2 == 0 ? 55 : 95,
-                       flash % 2 == 0 ? 15 : 8);
+                       flash % 2 == 0 ? 7 : 0);
   }
 
   for (uint8_t frame = 0; frame < 14; frame++) {
     milestoneClear(ctx);
     drawConfetti(ctx, frame);
     drawSombrero(ctx, ctx.cx, 8, frame);
-    milestoneFrameShow(ctx, 48, frame % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 48, frame % 2 == 0 ? 5 : 0);
   }
 
   milestoneEffectEnd(ctx);

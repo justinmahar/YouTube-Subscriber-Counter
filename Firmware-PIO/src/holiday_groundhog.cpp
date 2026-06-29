@@ -92,13 +92,13 @@ static void drawShadow(MilestoneCtx &ctx, int startX, uint8_t frame) {
 void runGroundhogHolidayAnimation(MD_Parola &display) {
   MilestoneCtx ctx;
   milestoneCtxInit(display, ctx);
-  milestoneEffectBegin(ctx, 8);
+  milestoneEffectBegin(ctx, 0);
 
   for (uint8_t frame = 0; frame < 12; frame++) {
     milestoneClear(ctx);
     drawBurrow(ctx, ctx.cx, frame);
     drawSun(ctx, ctx.width - 4, 2, frame);
-    milestoneFrameShow(ctx, 70, 7 + frame % 4);
+    milestoneFrameShow(ctx, 70, frame % 4);
   }
 
   for (uint8_t peek = 1; peek <= 6; peek++) {
@@ -106,7 +106,7 @@ void runGroundhogHolidayAnimation(MD_Parola &display) {
     drawBurrow(ctx, ctx.cx, peek);
     drawSun(ctx, ctx.width - 4, 2, peek);
     drawGroundhog(ctx, ctx.cx, 6, peek, false);
-    milestoneFrameShow(ctx, 120, 9 + peek);
+    milestoneFrameShow(ctx, 120, peek);
   }
 
   for (int look = 0; look < 6; look++) {
@@ -114,7 +114,7 @@ void runGroundhogHolidayAnimation(MD_Parola &display) {
     drawBurrow(ctx, ctx.cx, look);
     drawSun(ctx, ctx.width - 4 - look, 2, look);
     drawGroundhog(ctx, ctx.cx, 6, 6, look % 3 == 0);
-    milestoneFrameShow(ctx, 130, look % 2 == 0 ? 15 : 10);
+    milestoneFrameShow(ctx, 130, look % 2 == 0 ? 5 : 0);
   }
 
   for (uint8_t frame = 0; frame < 12; frame++) {
@@ -123,8 +123,8 @@ void runGroundhogHolidayAnimation(MD_Parola &display) {
     drawSun(ctx, ctx.width - 10 + frame / 2, 1, frame);
     drawGroundhog(ctx, ctx.cx, 6, 6, false);
     drawShadow(ctx, ctx.cx + 3, frame);
-    uint8_t intensity = 9 + frame / 2;
-    milestoneFrameShow(ctx, 75, intensity > 15 ? 15 : intensity);
+    uint8_t intensity = frame / 2;
+    milestoneFrameShow(ctx, 75, intensity > 7 ? 7 : intensity);
   }
 
   for (int surprised = 0; surprised < 4; surprised++) {
@@ -134,7 +134,7 @@ void runGroundhogHolidayAnimation(MD_Parola &display) {
     drawShadow(ctx, ctx.cx + 3, surprised);
     setGroundhogPixel(ctx, ctx.cx - 8, 2);
     setGroundhogPixel(ctx, ctx.cx + 8, 2);
-    milestoneFrameShow(ctx, 130, surprised % 2 == 0 ? 15 : 8);
+    milestoneFrameShow(ctx, 130, surprised % 2 == 0 ? 7 : 0);
   }
 
   milestoneEffectEnd(ctx);
