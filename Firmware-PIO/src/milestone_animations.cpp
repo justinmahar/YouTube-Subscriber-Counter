@@ -1,6 +1,7 @@
 #include "milestone_animations.h"
 
 #include "milestone_hours_animations.h"
+#include "milestone_helpers.h"
 #include "milestone_subs_animations.h"
 #include "milestone_views_animations.h"
 
@@ -66,7 +67,107 @@ static MilestoneTier tierFromAnimation(MilestoneAnimation animation) {
   return static_cast<MilestoneTier>(static_cast<uint8_t>(animation) % 6);
 }
 
+static bool hasMilestoneAnimation(MilestoneAnimation animation) {
+  return animation != MilestoneAnimation::Views100 &&
+         animation != MilestoneAnimation::Views1K;
+}
+
+static void runMilestoneIntroAnimation(MD_Parola &display) {
+  MilestoneCtx ctx;
+  milestoneCtxInit(display, ctx);
+  milestoneEffectBegin(ctx, 12);
+
+  const int cornerX[4] = {0, ctx.width - 1, 0, ctx.width - 1};
+  const int cornerY[4] = {0, 0, ctx.height - 1, ctx.height - 1};
+  const int convergeSteps = 12;
+  for (int frame = 0; frame <= convergeSteps; frame++) {
+    milestoneClear(ctx);
+    for (int dot = 0; dot < 4; dot++) {
+      for (int trail = 0; trail < 4; trail++) {
+        int t = max(0, frame - trail);
+        int x = cornerX[dot] + (ctx.cx - cornerX[dot]) * t / convergeSteps;
+        int y = cornerY[dot] + (ctx.cy - cornerY[dot]) * t / convergeSteps;
+        if (x >= 0 && x < ctx.width && y >= 0 && y < ctx.height) {
+          ctx.matrix->setPoint(y, ctx.colStart + x, trail < 2);
+        }
+      }
+    }
+    if (frame > 5) {
+      milestoneDrawDiamondRing(ctx, frame - 5);
+    }
+    milestoneFrameShow(ctx, 36, min(15, 8 + frame / 2));
+  }
+
+  for (int ring = 0; ring <= 16; ring++) {
+    milestoneClear(ctx);
+    milestoneDrawExplosionRing(ctx, ctx.cx, ctx.cy, ring);
+    if (ring > 2) {
+      milestoneDrawExplosionRing(ctx, ctx.cx, ctx.cy, ring - 2);
+    }
+    if (ring > 4) {
+      int reach = min(ctx.width / 2, ring);
+      for (int len = 0; len <= reach; len++) {
+        if (ctx.cx - len >= 0) {
+          ctx.matrix->setPoint(ctx.cy, ctx.colStart + ctx.cx - len, true);
+        }
+        if (ctx.cx + len < ctx.width) {
+          ctx.matrix->setPoint(ctx.cy, ctx.colStart + ctx.cx + len, true);
+        }
+        if (ctx.cy - len >= 0) {
+          ctx.matrix->setPoint(ctx.cy - len, ctx.colStart + ctx.cx, true);
+        }
+        if (ctx.cy + len < ctx.height) {
+          ctx.matrix->setPoint(ctx.cy + len, ctx.colStart + ctx.cx, true);
+        }
+      }
+    }
+    milestoneFrameShow(ctx, ring < 8 ? 24 : 34, min(15, 9 + ring / 2));
+  }
+
+  for (int frame = 0; frame < 18; frame++) {
+    milestoneClear(ctx);
+    for (int c = 0; c < ctx.width; c++) {
+      bool chase = ((c + frame) % 6) < 3;
+      ctx.matrix->setPoint(0, ctx.colStart + c, chase);
+      ctx.matrix->setPoint(ctx.height - 1, ctx.colStart + c, !chase);
+    }
+    for (int row = 1; row < ctx.height - 1; row++) {
+      ctx.matrix->setPoint(row, ctx.colStart, ((row + frame) % 4) < 2);
+      ctx.matrix->setPoint(row, ctx.colStart + ctx.width - 1,
+                           ((row + frame + 2) % 4) < 2);
+    }
+    milestoneDrawDiamondRing(ctx, 2 + (frame % 4));
+    milestoneFrameShow(ctx, 42, frame % 2 == 0 ? 15 : 11);
+  }
+
+  for (int pulse = 0; pulse < 3; pulse++) {
+    milestoneClear(ctx);
+    milestoneFillAll(ctx);
+    milestoneFrameShow(ctx, pulse == 2 ? 110 : 60, 15);
+    milestoneClear(ctx);
+    milestoneFrameShow(ctx, 38, 5);
+  }
+  milestoneEffectEnd(ctx);
+
+  MD_MAX72XX *matrix = display.getGraphicObject();
+  matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
+  matrix->clear();
+  matrix->update();
+  display.displayClear();
+  display.setIntensity(12);
+  display.setTextAlignment(PA_LEFT);
+  display.displayScroll("Milestone hit!", PA_LEFT, PA_SCROLL_LEFT, 55);
+  while (!display.displayAnimate()) {
+    delay(10);
+  }
+  delay(250);
+}
+
 void runMilestoneAnimation(MD_Parola &display, MilestoneAnimation animation) {
+  if (hasMilestoneAnimation(animation)) {
+    runMilestoneIntroAnimation(display);
+  }
+
   MilestoneTier tier = tierFromAnimation(animation);
 
   switch (animation) {

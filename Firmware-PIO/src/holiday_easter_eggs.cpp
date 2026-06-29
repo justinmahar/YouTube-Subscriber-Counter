@@ -23,6 +23,7 @@
 #include "holiday_thanksgiving.h"
 #include "holiday_valentines.h"
 #include "holiday_veterans_day.h"
+#include "milestone_helpers.h"
 
 #include <MD_MAX72xx.h>
 #include <math.h>
@@ -35,6 +36,89 @@ static bool timeSynced = false;
 static time_t holidayServerTimeUnix = 0;
 static unsigned long holidayServerTimeMillis = 0;
 static unsigned long lastHolidayEggMs = 0;
+
+static void drawHolidayStar(MilestoneCtx &ctx, int cx, int cy, int radius) {
+  ctx.matrix->setPoint(cy, ctx.colStart + cx, true);
+  for (int step = 1; step <= radius; step++) {
+    if (cx - step >= 0) {
+      ctx.matrix->setPoint(cy, ctx.colStart + cx - step, true);
+    }
+    if (cx + step < ctx.width) {
+      ctx.matrix->setPoint(cy, ctx.colStart + cx + step, true);
+    }
+    if (cy - step >= 0) {
+      ctx.matrix->setPoint(cy - step, ctx.colStart + cx, true);
+    }
+    if (cy + step < ctx.height) {
+      ctx.matrix->setPoint(cy + step, ctx.colStart + cx, true);
+    }
+    if (step <= 2) {
+      if (cx - step >= 0 && cy - step >= 0) {
+        ctx.matrix->setPoint(cy - step, ctx.colStart + cx - step, true);
+      }
+      if (cx + step < ctx.width && cy - step >= 0) {
+        ctx.matrix->setPoint(cy - step, ctx.colStart + cx + step, true);
+      }
+      if (cx - step >= 0 && cy + step < ctx.height) {
+        ctx.matrix->setPoint(cy + step, ctx.colStart + cx - step, true);
+      }
+      if (cx + step < ctx.width && cy + step < ctx.height) {
+        ctx.matrix->setPoint(cy + step, ctx.colStart + cx + step, true);
+      }
+    }
+  }
+}
+
+static void runHolidayIntroAnimation(MD_Parola &display) {
+  MilestoneCtx ctx;
+  milestoneCtxInit(display, ctx);
+  milestoneEffectBegin(ctx, 9);
+
+  for (int frame = 0; frame < ctx.width / 2 + 8; frame++) {
+    milestoneClear(ctx);
+    for (int c = 0; c < ctx.width; c++) {
+      int edgeDistance = min(c, ctx.width - 1 - c);
+      if (edgeDistance <= frame) {
+        ctx.matrix->setPoint(0, ctx.colStart + c, true);
+        ctx.matrix->setPoint(ctx.height - 1, ctx.colStart + c, true);
+      }
+      if ((c + frame) % 5 == 0) {
+        int row = (frame + c * 3) % ctx.height;
+        ctx.matrix->setPoint(row, ctx.colStart + c, true);
+      }
+    }
+
+    int radius = min(4, max(1, frame / 2));
+    drawHolidayStar(ctx, ctx.cx, ctx.cy, radius);
+    milestoneFrameShow(ctx, 36, min(15, 7 + frame / 3));
+  }
+
+  for (int pulse = 0; pulse < 3; pulse++) {
+    milestoneClear(ctx);
+    drawHolidayStar(ctx, ctx.cx, ctx.cy, 4);
+    if (pulse % 2 == 0) {
+      for (int c = 0; c < ctx.width; c += 3) {
+        ctx.matrix->setPoint((c + pulse) % ctx.height, ctx.colStart + c, true);
+      }
+    }
+    milestoneFrameShow(ctx, pulse == 2 ? 120 : 70, pulse % 2 == 0 ? 15 : 10);
+  }
+
+  milestoneEffectEnd(ctx);
+
+  MD_MAX72XX *matrix = display.getGraphicObject();
+  matrix->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
+  matrix->clear();
+  matrix->update();
+  display.displayClear();
+  display.setIntensity(11);
+  display.setTextAlignment(PA_LEFT);
+  display.displayScroll("Holiday!", PA_LEFT, PA_SCROLL_LEFT, 60);
+  while (!display.displayAnimate()) {
+    delay(10);
+  }
+  delay(200);
+}
 
 static bool isThanksgiving(const struct tm &timeinfo) {
   return timeinfo.tm_mon == 10 && timeinfo.tm_wday == 4 &&
@@ -240,6 +324,10 @@ void runHolidayPreviewCycle(MD_Parola &display) {
 }
 
 void runHolidayEasterEgg(MD_Parola &display, HolidayId holiday) {
+  if (holiday != HolidayId::None) {
+    runHolidayIntroAnimation(display);
+  }
+
   switch (holiday) {
   case HolidayId::StPatricksDay:
     runStPatricksHolidayAnimation(display);

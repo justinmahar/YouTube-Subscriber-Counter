@@ -30,16 +30,21 @@
 #define WIFI_TIMEOUT_MS 15000
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
-const bool ENABLE_WOKWI_SETUP = false;
-const bool DISABLE_INTRO_AND_WIFI_INFO = false;
+const bool ENABLE_WOKWI_SETUP = true;
+const bool DISABLE_INTRO_AND_WIFI_INFO = true;
 
-// Milestone boot test — set RUN_MILESTONE_TEST_ON_BOOT true to preview
-// animations on boot.
-const bool RUN_MILESTONE_TEST_ON_BOOT = false;
-static const MilestoneAnimation HOURS_BOOT_PREVIEW[] = {
-    MilestoneAnimation::Hours100, MilestoneAnimation::Hours1K,
-    MilestoneAnimation::Hours10K, MilestoneAnimation::Hours100K,
-    MilestoneAnimation::Hours1M,  MilestoneAnimation::Hours10M,
+// Set true to cycle milestone animations on boot (dev preview).
+const bool PREVIEW_MILESTONES = false;
+static const MilestoneAnimation MILESTONE_BOOT_PREVIEW[] = {
+    MilestoneAnimation::Subs100,   MilestoneAnimation::Subs1K,
+    MilestoneAnimation::Subs10K,   MilestoneAnimation::Subs100K,
+    MilestoneAnimation::Subs1M,    MilestoneAnimation::Subs10M,
+    MilestoneAnimation::Views10K,  MilestoneAnimation::Views100K,
+    MilestoneAnimation::Views1M,   MilestoneAnimation::Views10M,
+    MilestoneAnimation::Views100M, MilestoneAnimation::Hours100,
+    MilestoneAnimation::Hours1K,   MilestoneAnimation::Hours10K,
+    MilestoneAnimation::Hours100K, MilestoneAnimation::Hours1M,
+    MilestoneAnimation::Hours10M,
 };
 
 MD_Parola Display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
@@ -1920,14 +1925,12 @@ void setup() {
     runHolidayPreviewCycle(Display);
   } else if (RUN_HOLIDAY_PREVIEW_ON_BOOT) {
     runHolidayEasterEgg(Display, HOLIDAY_PREVIEW_BOOT);
-  } else if (!DISABLE_INTRO_AND_WIFI_INFO) {
-    if (RUN_MILESTONE_TEST_ON_BOOT) {
-      for (MilestoneAnimation anim : HOURS_BOOT_PREVIEW) {
-        runMilestoneAnimation(Display, anim);
-      }
-    } else {
-      runBootAnimation();
+  } else if (PREVIEW_MILESTONES) {
+    for (MilestoneAnimation anim : MILESTONE_BOOT_PREVIEW) {
+      runMilestoneAnimation(Display, anim);
     }
+  } else if (!DISABLE_INTRO_AND_WIFI_INFO) {
+    runBootAnimation();
   }
 
   loadPrefs();
