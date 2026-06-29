@@ -46,3 +46,15 @@ Serves `docs/` locally to preview the browser installer before publishing.
 - Uses `python3 -m http.server`
 
 Use this to verify `docs/index.html`, `docs/manifest.json`, and the `.bin` files without pushing to GitHub Pages.
+
+## Deploy / Dev
+
+If users says to prepare to deploy, do the following:
+- Set DISABLE_INTRO_AND_WIFI_INFO to false
+- Set ENABLE_WOKWI_SETUP to false
+
+If users says to go back to development mode, do the following:
+- Set DISABLE_INTRO_AND_WIFI_INFO to true
+- Set ENABLE_WOKWI_SETUP to true
+
+Then run the build the firmware.

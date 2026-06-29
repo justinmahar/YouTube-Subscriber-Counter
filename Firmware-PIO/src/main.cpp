@@ -2050,14 +2050,10 @@ void loop() {
 
 String getStatDisplayText(int statIndex, const String &formattedValue) {
   if (statIndex == STAT_INDEX_SUBSCRIBERS) {
-    long value = formattedValue.toInt();
-    if (value >= 1000000L) {
+    if (formattedValue.toInt() >= 1000000L) {
       return formattedValue;
     }
-    if (value >= 100000L) {
-      return String("*") + formattedValue;
-    }
-    return String("* ") + formattedValue;
+    return String("*") + formattedValue;
   }
   return formattedValue;
 }
