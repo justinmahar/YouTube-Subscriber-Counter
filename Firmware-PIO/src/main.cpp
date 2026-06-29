@@ -33,6 +33,9 @@
 const bool ENABLE_WOKWI_SETUP = false;
 const bool DISABLE_INTRO_AND_WIFI_INFO = false;
 
+// Set true to simulate a WiFi drop after the first successful stats fetch.
+const bool DEBUG_SIMULATE_WIFI_DROP_AFTER_FIRST_STATS_FETCH = false;
+
 // Set true to preview one hardcoded milestone before any other boot preview.
 const bool RUN_SINGLE_MILESTONE_PREVIEW_ON_BOOT = false;
 const MilestoneAnimation SINGLE_MILESTONE_PREVIEW_BOOT =
@@ -69,6 +72,10 @@ const unsigned int DEFAULT_REFRESH_MINUTES = 5;
 const unsigned int MAX_REFRESH_MINUTES = 1440;
 const double SECONDS_PER_28_DAYS = 28.0 * 24.0 * 60.0 * 60.0;
 const int INTERVAL_PATTERN_LENGTH = 48;
+const unsigned long WIFI_INDICATOR_FLASH_MS = 220;
+const unsigned long WIFI_INDICATOR_PAUSE_MS = 1100;
+const unsigned long WIFI_INDICATOR_PATTERN_MS =
+    (WIFI_INDICATOR_FLASH_MS * 6) + WIFI_INDICATOR_PAUSE_MS;
 
 const uint8_t STAT_SUBSCRIBERS = 1 << 0;
 const uint8_t STAT_VIEWS = 1 << 1;
@@ -119,6 +126,9 @@ void startStatDisplay();
 void startStatScrollIn();
 void startStatExitTransition();
 bool tickStatScrollAnimation();
+bool canRefreshStats();
+bool isWiFiDisconnectedForDisplay();
+void tickWiFiDisconnectedIndicator();
 void renderRightAlignedStat(const char *text);
 void renderRightAlignedStatRollingLastDigit(const char *oldText,
                                             const char *newText);
@@ -883,6 +893,7 @@ static int16_t statScrollLabelOutSteps = 0;
 static unsigned long statScrollLastStepMs = 0;
 static double lastMilestoneCheckValue[STAT_COUNT] = {0, 0, 0};
 static bool hasLastMilestoneCheckValue[STAT_COUNT] = {false, false, false};
+static bool wifiDisconnectedIndicatorWasActive = false;
 
 struct MilestoneRule {
   double interval;
@@ -916,6 +927,59 @@ static const MilestoneRule HOURS_MILESTONES[] = {
 };
 
 static bool isDigitChar(char c) { return c >= '0' && c <= '9'; }
+
+bool canRefreshStats() {
+  if (WiFi.status() != WL_CONNECTED) {
+    return false;
+  }
+
+  return !(DEBUG_SIMULATE_WIFI_DROP_AFTER_FIRST_STATS_FETCH && statsLoaded);
+}
+
+bool isWiFiDisconnectedForDisplay() {
+  return WiFi.status() != WL_CONNECTED ||
+         (DEBUG_SIMULATE_WIFI_DROP_AFTER_FIRST_STATS_FETCH && statsLoaded);
+}
+
+static void drawWiFiDisconnectedIndicator(bool on) {
+  MD_MAX72XX *matrix = Display.getGraphicObject();
+  uint16_t colStart, colEnd;
+  Display.getDisplayExtent(colStart, colEnd);
+  // Matrix column 0 is the physical right edge on FC16 chains.
+  uint16_t rightCol = colEnd;
+  uint16_t leftCol = colEnd > colStart ? colEnd - 1 : colEnd;
+
+  matrix->update(MD_MAX72XX::OFF);
+  for (uint8_t row = 0; row < 2; row++) {
+    for (uint16_t col = leftCol; col <= rightCol; col++) {
+      matrix->setPoint(row, col, on);
+    }
+  }
+  matrix->update(MD_MAX72XX::ON);
+}
+
+void tickWiFiDisconnectedIndicator() {
+  if (!isWiFiDisconnectedForDisplay()) {
+    if (wifiDisconnectedIndicatorWasActive) {
+      drawWiFiDisconnectedIndicator(false);
+      wifiDisconnectedIndicatorWasActive = false;
+
+      if (statsLoaded && !statDisplayScrolling &&
+          statScrollPhase == SCROLL_NONE) {
+        lastDisplayedValue = "";
+        showProjectedStat();
+      }
+    }
+    return;
+  }
+
+  unsigned long phase = millis() % WIFI_INDICATOR_PATTERN_MS;
+  bool flashWindow = phase < WIFI_INDICATOR_FLASH_MS * 6;
+  bool indicatorOn =
+      flashWindow && ((phase / WIFI_INDICATOR_FLASH_MS) % 2 == 0);
+  drawWiFiDisconnectedIndicator(indicatorOn);
+  wifiDisconnectedIndicatorWasActive = true;
+}
 
 static bool crossedInterval(double previousValue, double currentValue,
                             double interval) {
@@ -2013,70 +2077,70 @@ void loop() {
 
   server.handleClient();
 
-  if (WiFi.status() == WL_CONNECTED) {
-    unsigned long now = millis();
-    unsigned long refreshInterval =
-        (unsigned long)saved_refresh_minutes * 60000UL;
+  unsigned long now = millis();
+  unsigned long refreshInterval = (unsigned long)saved_refresh_minutes * 60000UL;
 
-    if (!statsLoaded || api_lasttime == 0 ||
-        now - api_lasttime >= refreshInterval) {
-      bool hadStats = statsLoaded;
-      if (fetchStats()) {
-        if (!hadStats) {
-          startStatDisplay();
-          display_lasttime = now;
-          cycle_lasttime = now;
-        }
-      } else if (!statsLoaded) {
-        Display.print("API err");
+  if (canRefreshStats() &&
+      (!statsLoaded || api_lasttime == 0 ||
+       now - api_lasttime >= refreshInterval)) {
+    bool hadStats = statsLoaded;
+    if (fetchStats()) {
+      if (!hadStats) {
+        startStatDisplay();
+        display_lasttime = now;
+        cycle_lasttime = now;
       }
-      api_lasttime = now;
+    } else if (!statsLoaded) {
+      Display.print("API err");
+    }
+    api_lasttime = now;
+  }
+
+  if (statsLoaded) {
+    if (checkAndRunMilestoneAnimation()) {
+      now = millis();
+      if (selectedStatsCount() > 1) {
+        startStatScrollIn();
+      } else {
+        showProjectedStat();
+      }
+      cycle_lasttime = now;
+      display_lasttime = now;
     }
 
-    if (statsLoaded) {
-      if (checkAndRunMilestoneAnimation()) {
-        now = millis();
-        if (selectedStatsCount() > 1) {
-          startStatScrollIn();
-        } else {
-          showProjectedStat();
-        }
-        cycle_lasttime = now;
-        display_lasttime = now;
-      }
-
-      if (checkAndRunHolidayEasterEgg(Display)) {
-        now = millis();
-        if (selectedStatsCount() > 1) {
-          startStatScrollIn();
-        } else {
-          showProjectedStat();
-        }
-        cycle_lasttime = now;
-        display_lasttime = now;
-      }
-
+    if (checkAndRunHolidayEasterEgg(Display)) {
+      now = millis();
       if (selectedStatsCount() > 1) {
-        if (tickOverflowStatScroll()) {
-          // Wide values use Parola's native scroll and advance when complete.
-        } else if (tickStatScrollAnimation()) {
-          // Label/number scroll animation in progress.
-        } else if (now - cycle_lasttime >=
-                   (unsigned long)(saved_stat_cycle_seconds * 1000.0f)) {
-          startStatExitTransition();
-          display_lasttime = now;
-        } else if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
-          showProjectedStat();
-          display_lasttime = now;
-        }
-      } else if (tickOverflowStatScroll()) {
-        // Wide single-stat values continuously loop their native scroll.
+        startStatScrollIn();
+      } else {
+        showProjectedStat();
+      }
+      cycle_lasttime = now;
+      display_lasttime = now;
+    }
+
+    if (selectedStatsCount() > 1) {
+      if (tickOverflowStatScroll()) {
+        // Wide values use Parola's native scroll and advance when complete.
+      } else if (tickStatScrollAnimation()) {
+        // Label/number scroll animation in progress.
+      } else if (now - cycle_lasttime >=
+                 (unsigned long)(saved_stat_cycle_seconds * 1000.0f)) {
+        startStatExitTransition();
+        display_lasttime = now;
       } else if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
         showProjectedStat();
         display_lasttime = now;
       }
+    } else if (tickOverflowStatScroll()) {
+      // Wide single-stat values continuously loop their native scroll.
+    } else if (now - display_lasttime >= DISPLAY_UPDATE_MS) {
+      showProjectedStat();
+      display_lasttime = now;
     }
   }
+
+  tickWiFiDisconnectedIndicator();
 }
 
 String getStatDisplayText(int statIndex, const String &formattedValue) {

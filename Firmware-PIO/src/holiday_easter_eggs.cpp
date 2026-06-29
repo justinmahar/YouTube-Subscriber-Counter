@@ -360,13 +360,9 @@ bool holidayEasterEggsSetServerTime(double serverTimeUnix) {
   }
 
   unsigned long now = millis();
-  bool wasTimeSynced = timeSynced;
   holidayServerTimeUnix = (time_t)serverTimeUnix;
   holidayServerTimeMillis = now;
   timeSynced = true;
-  if (!wasTimeSynced) {
-    lastHolidayEggMs = now;
-  }
   Serial.println("Holiday clock synced from stats API.");
   return true;
 }
