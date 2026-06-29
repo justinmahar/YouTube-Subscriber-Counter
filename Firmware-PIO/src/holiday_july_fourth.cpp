@@ -12,6 +12,11 @@ static void setJulyPixel(MilestoneCtx &ctx, int col, int row, bool on = true) {
   }
 }
 
+static void setJulyFlagPixel(MilestoneCtx &ctx, int col, int row,
+                             bool on = true) {
+  setJulyPixel(ctx, ctx.width - 1 - col, row, on);
+}
+
 static void drawFlagWave(MilestoneCtx &ctx, uint8_t frame) {
   for (int row = 0; row < ctx.height; row++) {
     for (int col = 0; col < ctx.width; col++) {
@@ -21,7 +26,7 @@ static void drawFlagWave(MilestoneCtx &ctx, uint8_t frame) {
       bool star = canton && ((col + row * 3 + frame) % 5 == 0);
 
       if ((canton && star) || (!canton && stripe && wave)) {
-        setJulyPixel(ctx, col, row);
+        setJulyFlagPixel(ctx, col, row);
       }
     }
   }

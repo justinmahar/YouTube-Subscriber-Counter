@@ -1913,7 +1913,9 @@ void setup() {
   Display.setTextAlignment(PA_CENTER);
 
   randomSeed(esp_random());
-  if (RUN_HOLIDAY_PREVIEW_ON_BOOT) {
+  if (PREVIEW_HOLIDAYS) {
+    runHolidayPreviewCycle(Display);
+  } else if (RUN_HOLIDAY_PREVIEW_ON_BOOT) {
     runHolidayEasterEgg(Display, HOLIDAY_PREVIEW_BOOT);
   } else if (!DISABLE_INTRO_AND_WIFI_INFO) {
     if (RUN_MILESTONE_TEST_ON_BOOT) {

@@ -11,11 +11,33 @@ enum class HolidayId : uint8_t {
   Christmas = 3,
   ValentinesDay = 4,
   JulyFourth = 5,
+  GroundhogDay = 6,
+  NewYearsEve = 7,
+  PiDay = 8,
+  AprilFools = 9,
+  CincoDeMayo = 10,
+  JustinBirthday = 11,
+  DadBirthday = 12,
+  PirateDay = 13,
+  VeteransDay = 14,
+  Thanksgiving = 15,
+  EarthDay = 16,
+  MemorialDay = 17,
+  CreatorCatDay = 18,
+  LaborDay = 19,
+  LeapDay = 20,
+  Easter = 21,
+  FathersDay = 22,
+  PresidentsDay = 23,
+  CoffeeDay = 24,
 };
 
-// Set true to preview a holiday animation on boot (before intro/WiFi).
-const bool RUN_HOLIDAY_PREVIEW_ON_BOOT = true;
-const HolidayId HOLIDAY_PREVIEW_BOOT = HolidayId::JulyFourth;
+// Set true to cycle every holiday animation on boot (dev preview).
+const bool PREVIEW_HOLIDAYS = false;
+
+// Set true to preview a single holiday on boot (when PREVIEW_HOLIDAYS is false).
+const bool RUN_HOLIDAY_PREVIEW_ON_BOOT = false;
+const HolidayId HOLIDAY_PREVIEW_BOOT = HolidayId::CoffeeDay;
 
 // Sync NTP and configure America/Eastern. Call after WiFi connects.
 bool holidayEasterEggsInit();
@@ -25,6 +47,9 @@ HolidayId getCurrentHoliday();
 
 // Play animation + scrolling greeting for the given holiday.
 void runHolidayEasterEgg(MD_Parola &display, HolidayId holiday);
+
+// Play every holiday animation in calendar order (PREVIEW_HOLIDAYS boot mode).
+void runHolidayPreviewCycle(MD_Parola &display);
 
 // Shared ending for holiday animations.
 void holidayScrollMessage(MD_Parola &display, const char *message);
