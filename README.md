@@ -187,7 +187,7 @@ Regular Version:
 
 ### 1. Prepare a stats endpoint
 
-The device fetches a user-provided endpoint that returns this JSON shape. A ready-made public endpoint is available at [Jay Mayor Stats API](https://www.jaymayor.com/api/docs) (`GET https://www.jaymayor.com/api/stats`).
+The device fetches a user-provided endpoint that returns this JSON shape.
 
 ```json
 {
@@ -221,7 +221,7 @@ Required fields:
 - `metrics28Days` — subscriber, view, and watch-hour gains over the last 28 days (projection rates)
 - `adjusted` — projected whole-number stats as of `asOfUnix`
 
-`growthRatesPerMinute` is optional documentation on the Jay Mayor API but is not required by the firmware.
+`growthRatesPerMinute` is optional and is not required by the firmware.
 
 ### 2. Flash the firmware
 
