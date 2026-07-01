@@ -31,8 +31,8 @@
 #define WIFI_TIMEOUT_MS 15000
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
-const bool ENABLE_WOKWI_SETUP = false;
-const bool DISABLE_INTRO_AND_WIFI_INFO = false;
+const bool ENABLE_WOKWI_SETUP = true;
+const bool DISABLE_INTRO_AND_WIFI_INFO = true;
 
 // Set true to simulate a WiFi drop after the first successful stats fetch.
 const bool DEBUG_SIMULATE_WIFI_DROP_AFTER_FIRST_STATS_FETCH = false;
@@ -104,7 +104,7 @@ unsigned long cycle_lasttime = 0;
 unsigned long stats_fetched_at = 0;
 double stat_baseline_values[STAT_COUNT] = {0, 0, 0};
 double stat_increase_per_28_days[STAT_COUNT] = {0, 0, 0};
-double stat_baseline_started_at_unix = 0;
+double stat_baseline_started_at_unix[STAT_COUNT] = {0, 0, 0};
 double stats_as_of_unix = 0;
 int current_stat_index = STAT_INDEX_SUBSCRIBERS;
 bool statsLoaded = false;
@@ -866,12 +866,13 @@ double getProjectedFractionalStatValue(double baselineStartedAtUnix,
 double getProjectedStatValue(int statIndex, double currentUnixTimestamp) {
   if (statIndex == STAT_INDEX_WATCH_HOURS) {
     return getProjectedFractionalStatValue(
-        stat_baseline_started_at_unix, stat_baseline_values[statIndex],
+        stat_baseline_started_at_unix[statIndex],
+        stat_baseline_values[statIndex],
         stat_increase_per_28_days[statIndex], currentUnixTimestamp);
   }
 
   return getProjectedWholeStatValue(
-      stat_baseline_started_at_unix, stat_baseline_values[statIndex],
+      stat_baseline_started_at_unix[statIndex], stat_baseline_values[statIndex],
       stat_increase_per_28_days[statIndex], currentUnixTimestamp);
 }
 
@@ -921,14 +922,25 @@ bool fetchStats() {
     return false;
   }
 
-  stat_baseline_started_at_unix = baseline["startedAtUnix"] | 0.0;
+  stat_baseline_started_at_unix[STAT_INDEX_SUBSCRIBERS] =
+      baseline["subscribersStartedAtUnix"] | 0.0;
+  stat_baseline_started_at_unix[STAT_INDEX_VIEWS] =
+      baseline["totalViewsStartedAtUnix"] | 0.0;
+  stat_baseline_started_at_unix[STAT_INDEX_WATCH_HOURS] =
+      baseline["watchHoursStartedAtUnix"] | 0.0;
   double server_time_unix = doc["serverTimeUnix"] | 0.0;
   stats_as_of_unix = adjusted["asOfUnix"] | 0.0;
 
-  if (stat_baseline_started_at_unix <= 0 || server_time_unix <= 0 ||
-      stats_as_of_unix <= 0) {
+  if (server_time_unix <= 0 || stats_as_of_unix <= 0) {
     Serial.println("Stats response missing valid Unix timestamps.");
     return false;
+  }
+
+  for (int statIndex = 0; statIndex < STAT_COUNT; statIndex++) {
+    if (stat_baseline_started_at_unix[statIndex] <= 0) {
+      Serial.println("Stats response missing valid baseline timestamps.");
+      return false;
+    }
   }
 
   stat_baseline_values[STAT_INDEX_SUBSCRIBERS] = baseline["subscribers"] | 0.0;

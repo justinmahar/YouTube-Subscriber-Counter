@@ -193,7 +193,9 @@ The device fetches a user-provided endpoint that returns this JSON shape. A read
 {
   "serverTimeUnix": 1781918014,
   "baseline": {
-    "startedAtUnix": 1781917014,
+    "subscribersStartedAtUnix": 1781917014,
+    "totalViewsStartedAtUnix": 1781917014,
+    "watchHoursStartedAtUnix": 1781917014,
     "subscribers": 10169,
     "totalViews": 2748484,
     "watchHours": 0
@@ -215,7 +217,7 @@ The device fetches a user-provided endpoint that returns this JSON shape. A read
 Required fields:
 
 - `serverTimeUnix` — current server time; used for stat projection timing and holiday date checks
-- `baseline` — starting whole-number stats and `startedAtUnix` timestamp
+- `baseline` — starting whole-number stats plus a Unix timestamp per stat (`subscribersStartedAtUnix`, `totalViewsStartedAtUnix`, `watchHoursStartedAtUnix`); each stat projects from its own baseline time
 - `metrics28Days` — subscriber, view, and watch-hour gains over the last 28 days (projection rates)
 - `adjusted` — projected whole-number stats as of `asOfUnix`
 
