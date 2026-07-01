@@ -31,8 +31,8 @@
 #define WIFI_TIMEOUT_MS 15000
 #define WOKWI_SETUP_TIMEOUT_MS 8000
 
-const bool ENABLE_WOKWI_SETUP = true;
-const bool DISABLE_INTRO_AND_WIFI_INFO = true;
+const bool ENABLE_WOKWI_SETUP = false;
+const bool DISABLE_INTRO_AND_WIFI_INFO = false;
 
 // Set true to simulate a WiFi drop after the first successful stats fetch.
 const bool DEBUG_SIMULATE_WIFI_DROP_AFTER_FIRST_STATS_FETCH = false;
